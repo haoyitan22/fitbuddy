@@ -1,0 +1,27 @@
+@import "tailwindcss";
+
+:root {
+  --color-primary: #C084FC;
+  --color-secondary: #F9A8D4;
+  --color-bg: #FDF4FF;
+  --color-card: #FFFFFF;
+  --color-text-main: #3B1F5E;
+  --color-text-sub: #9CA3AF;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+body {
+  background: linear-gradient(180deg, #FDF4FF 0%, #FFF0F6 100%);
+  min-height: 100vh;
+  color: var(--color-text-main);
+}
