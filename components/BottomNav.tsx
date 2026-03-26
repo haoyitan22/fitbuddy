@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 const navItems = [
   { href: "/home", label: "首页", emoji: "🏠" },
   { href: "/record", label: "记录", emoji: "📷" },
+  { href: "/pet", label: "宠物", emoji: "🐾" },
   { href: "/team", label: "队伍", emoji: "👥" },
   { href: "/profile", label: "我的", emoji: "👤" },
 ];
@@ -43,7 +44,7 @@ export default function BottomNav() {
               flexDirection: "column",
               alignItems: "center",
               gap: "2px",
-              padding: "8px 16px",
+              padding: "8px 10px",
               textDecoration: "none",
               color: isActive ? "#C084FC" : "#9CA3AF",
               transition: "color 0.2s",
