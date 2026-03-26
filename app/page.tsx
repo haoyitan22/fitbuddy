@@ -42,7 +42,7 @@ export default function WelcomePage() {
 
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <Link
-            href="/register"
+            href="/register/step1"
             style={{
               display: "block",
               background: "#C084FC",

@@ -4,7 +4,8 @@ const TEMP_KEY = "fitbuddy_register_temp";
 
 export interface Pet {
   emoji: string;
-  name: string;
+  species: string; // 熊猫、猫咪等
+  name: string;    // 种类昵称：胖达、橘子等
   desc: string;
 }
 
@@ -20,28 +21,23 @@ export interface UserProfile {
   email: string;
   password: string;
   pet: Pet;
+  petName: string;      // 用户给宠物起的名字
+  petJoinDate: string;  // ISO 日期字符串
 }
 
 export type TempRegisterData = Partial<UserProfile>;
 
-/** 注册时保存用户资料到 localStorage */
 export function saveUserData(profile: UserProfile): void {
   localStorage.setItem(USER_DATA_KEY, JSON.stringify(profile));
 }
 
-/** 读取注册资料（用于登录验证） */
 export function getUserData(): UserProfile | null {
   if (typeof window === "undefined") return null;
   const data = localStorage.getItem(USER_DATA_KEY);
   if (!data) return null;
-  try {
-    return JSON.parse(data) as UserProfile;
-  } catch {
-    return null;
-  }
+  try { return JSON.parse(data) as UserProfile; } catch { return null; }
 }
 
-/** 注册流程中的临时数据（跨步骤） */
 export function saveTempData(data: TempRegisterData): void {
   const existing = getTempData();
   sessionStorage.setItem(TEMP_KEY, JSON.stringify({ ...existing, ...data }));
@@ -58,24 +54,20 @@ export function clearTempData(): void {
   sessionStorage.removeItem(TEMP_KEY);
 }
 
-/** 登录时创建会话 */
 export function createSession(email: string): void {
   sessionStorage.setItem(SESSION_KEY, email);
 }
 
-/** 是否已登录 */
 export function isLoggedIn(): boolean {
   if (typeof window === "undefined") return false;
   return sessionStorage.getItem(SESSION_KEY) !== null;
 }
 
-/** 获取当前登录用户资料 */
 export function getUser(): UserProfile | null {
   if (!isLoggedIn()) return null;
   return getUserData();
 }
 
-/** 登出 */
 export function logout(): void {
   sessionStorage.removeItem(SESSION_KEY);
 }
