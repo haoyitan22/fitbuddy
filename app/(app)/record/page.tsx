@@ -66,9 +66,8 @@ export default function RecordPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ imageBase64, mimeType }),
       });
-      if (!res.ok) { setError(`服务器错误 (${res.status})，请重试`); return; }
       const data = await res.json();
-      if (data.error) { setError(data.error); return; }
+      if (!res.ok || data.error) { setError(data.error || `服务器错误 (${res.status})`); return; }
       setResult(data as AnalysisResult);
     } catch {
       setError("请求失败，请检查网络后重试");
