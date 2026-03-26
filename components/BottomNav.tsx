@@ -4,8 +4,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 
 const navItems = [
-  { href: "/home", label: "首页", emoji: "🏠" },
-  { href: "/record", label: "记录", emoji: "📷" },
+  { href: "/home", label: "记录", emoji: "📋" },
+  { href: "/workout", label: "运动", emoji: "💪" },
   { href: "/pet", label: "宠物", emoji: "🐾" },
   { href: "/team", label: "队伍", emoji: "👥" },
   { href: "/profile", label: "我的", emoji: "👤" },
