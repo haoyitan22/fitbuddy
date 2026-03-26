@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { saveUser } from "@/lib/auth";
+import { saveUserData, createSession } from "@/lib/auth";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -71,7 +71,7 @@ export default function RegisterPage() {
     setError2("");
     if (!weight || !height || !targetWeight) { setError2("请填写完整身体数据"); return; }
     if (!activityLevel) { setError2("请选择活动水平"); return; }
-    saveUser({
+    const profile = {
       nickname: nickname.trim(),
       gender,
       birthday: `${birthYear}-${String(birthMonth).padStart(2, "0")}-${String(birthDay).padStart(2, "0")}`,
@@ -81,7 +81,9 @@ export default function RegisterPage() {
       activityLevel,
       email: email.trim(),
       password,
-    });
+    };
+    saveUserData(profile);
+    createSession(profile.email);
     router.push("/home");
   }
 

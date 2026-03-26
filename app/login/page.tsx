@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { getUser } from "@/lib/auth";
+import { getUserData, createSession } from "@/lib/auth";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -29,7 +29,7 @@ export default function LoginPage() {
       setError("请填写邮箱和密码");
       return;
     }
-    const user = getUser();
+    const user = getUserData();
     if (!user) {
       setError("账号不存在，请先注册");
       return;
@@ -38,6 +38,7 @@ export default function LoginPage() {
       setError("邮箱或密码错误");
       return;
     }
+    createSession(email);
     router.push("/home");
   }
 
