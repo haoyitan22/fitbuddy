@@ -10,7 +10,7 @@ export default function WelcomePage() {
 
   useEffect(() => {
     if (isLoggedIn()) {
-      router.replace("/");
+      router.replace("/home");
     }
   }, [router]);
 
@@ -27,7 +27,6 @@ export default function WelcomePage() {
       }}
     >
       <div style={{ maxWidth: "430px", width: "100%", textAlign: "center" }}>
-        {/* Logo area */}
         <div style={{ marginBottom: "48px" }}>
           <div style={{ fontSize: "72px", marginBottom: "16px" }}>🌿</div>
           <h1
@@ -53,7 +52,6 @@ export default function WelcomePage() {
           </p>
         </div>
 
-        {/* Buttons */}
         <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
           <Link
             href="/register"

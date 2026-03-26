@@ -38,7 +38,7 @@ export default function LoginPage() {
       setError("邮箱或密码错误");
       return;
     }
-    router.push("/");
+    router.push("/home");
   }
 
   return (

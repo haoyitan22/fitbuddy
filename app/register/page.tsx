@@ -82,7 +82,7 @@ export default function RegisterPage() {
       email: email.trim(),
       password,
     });
-    router.push("/");
+    router.push("/home");
   }
 
   const cardStyle: React.CSSProperties = {
