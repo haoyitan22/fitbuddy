@@ -32,6 +32,9 @@ function getCoins() {
 function getAvatarColor() {
   try { return localStorage.getItem("fitbuddy_avatar_color") || "#C084FC"; } catch { return "#C084FC"; }
 }
+function getAvatarPhoto() {
+  try { return localStorage.getItem("fitbuddy_avatar_photo") || ""; } catch { return ""; }
+}
 const AVATAR_COLORS = ["#C084FC", "#F9A8D4", "#6EE7B7", "#93C5FD", "#FCD34D", "#F87171"];
 
 const DAYS = ["一","二","三","四","五","六","日"];
@@ -59,6 +62,7 @@ export default function ProfilePage() {
   const [checkins, setCheckins] = useState(0);
   const [coins, setCoins] = useState(128);
   const [avatarColor, setAvatarColor] = useState("#C084FC");
+  const [avatarPhoto, setAvatarPhoto] = useState("");
   const [modal, setModal] = useState<ModalContent | null>(null);
 
   // form states
@@ -77,6 +81,7 @@ export default function ProfilePage() {
     setCheckins(getWeekCheckins());
     setCoins(getCoins());
     setAvatarColor(getAvatarColor());
+    setAvatarPhoto(getAvatarPhoto());
     try { setDietPrefs(JSON.parse(localStorage.getItem("fitbuddy_diet_prefs")||"[]")); } catch { /**/ }
   }, []);
 
@@ -88,6 +93,12 @@ export default function ProfilePage() {
 
   function saveAvatarColor(c: string) {
     localStorage.setItem("fitbuddy_avatar_color", c); setAvatarColor(c);
+  }
+  function saveAvatarPhoto(dataUrl: string) {
+    localStorage.setItem("fitbuddy_avatar_photo", dataUrl); setAvatarPhoto(dataUrl);
+  }
+  function removeAvatarPhoto() {
+    localStorage.removeItem("fitbuddy_avatar_photo"); setAvatarPhoto("");
   }
 
   function closeModal() { setModal(null); setPwMsg(""); }
@@ -107,13 +118,15 @@ export default function ProfilePage() {
 
   function openAvatar() {
     setModal({
-      title:"修改头像颜色",
+      title:"修改头像",
       body:(
-        <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap",marginBottom:16}}>
-          {AVATAR_COLORS.map(c=>(
-            <div key={c} onClick={()=>{ saveAvatarColor(c); closeModal(); }} style={{ width:48,height:48,borderRadius:"50%",background:c,cursor:"pointer",border:avatarColor===c?"3px solid #3B1F5E":"3px solid transparent" }} />
-          ))}
-        </div>
+        <AvatarEditor
+          currentPhoto={avatarPhoto}
+          currentColor={avatarColor}
+          onPhoto={(url)=>{ saveAvatarPhoto(url); closeModal(); }}
+          onRemovePhoto={()=>{ removeAvatarPhoto(); closeModal(); }}
+          onColor={(c)=>{ saveAvatarColor(c); closeModal(); }}
+        />
       )
     });
   }
@@ -222,8 +235,11 @@ export default function ProfilePage() {
         {/* ── 1. User card ── */}
         <div style={{background:"linear-gradient(135deg,#F3E8FF,#FCE7F3)",borderRadius:20,padding:"20px 16px",marginBottom:14,boxShadow:"0 4px 20px rgba(192,132,252,.15)"}}>
           <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
-            <div style={{width:58,height:58,borderRadius:"50%",background:avatarColor,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,fontWeight:800,color:"#fff",flexShrink:0}}>
-              {user?.nickname?.[0]?.toUpperCase()??"U"}
+            <div style={{width:58,height:58,borderRadius:"50%",background:avatarColor,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,fontWeight:800,color:"#fff",flexShrink:0,overflow:"hidden"}}>
+              {avatarPhoto
+                ? <img src={avatarPhoto} alt="avatar" style={{width:"100%",height:"100%",objectFit:"cover"}} />
+                : (user?.nickname?.[0]?.toUpperCase()??"U")
+              }
             </div>
             <div style={{flex:1}}>
               <h2 style={{fontSize:20,fontWeight:800,color:"#3B1F5E",margin:"0 0 3px"}}>{user?.nickname??"--"}</h2>
@@ -356,6 +372,65 @@ function DietSelector({options,initial,onSave}:{options:{id:string;label:string}
         ))}
       </div>
       <Btn onClick={()=>onSave(sel)}>保存</Btn>
+    </div>
+  );
+}
+
+function AvatarEditor({currentPhoto,currentColor,onPhoto,onRemovePhoto,onColor}:{
+  currentPhoto:string; currentColor:string;
+  onPhoto:(url:string)=>void; onRemovePhoto:()=>void; onColor:(c:string)=>void;
+}) {
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const img = new Image();
+      img.onload = () => {
+        const MAX = 400;
+        const scale = Math.min(1, MAX / Math.max(img.width, img.height));
+        const canvas = document.createElement("canvas");
+        canvas.width = Math.round(img.width * scale);
+        canvas.height = Math.round(img.height * scale);
+        canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+        onPhoto(canvas.toDataURL("image/jpeg", 0.85));
+      };
+      img.src = ev.target?.result as string;
+    };
+    reader.readAsDataURL(file);
+  }
+
+  return (
+    <div>
+      {/* Current avatar preview */}
+      <div style={{display:"flex",justifyContent:"center",marginBottom:16}}>
+        <div style={{width:80,height:80,borderRadius:"50%",background:currentColor,overflow:"hidden",display:"flex",alignItems:"center",justifyContent:"center",fontSize:32,fontWeight:800,color:"#fff"}}>
+          {currentPhoto ? <img src={currentPhoto} alt="" style={{width:"100%",height:"100%",objectFit:"cover"}} /> : "👤"}
+        </div>
+      </div>
+
+      {/* Upload button */}
+      <label style={{display:"block",width:"100%",marginBottom:10}}>
+        <div style={{width:"100%",padding:"13px 0",borderRadius:14,background:"linear-gradient(135deg,#C084FC,#F9A8D4)",color:"#fff",fontSize:15,fontWeight:700,textAlign:"center",cursor:"pointer",boxSizing:"border-box"}}>
+          📷 上传照片
+        </div>
+        <input type="file" accept="image/*" onChange={handleFile} style={{display:"none"}} />
+      </label>
+
+      {/* Remove photo if present */}
+      {currentPhoto && (
+        <button onClick={onRemovePhoto} style={{width:"100%",padding:"11px 0",borderRadius:14,border:"1.5px solid #E5E7EB",background:"#fff",color:"#EF4444",fontSize:14,fontWeight:600,cursor:"pointer",marginBottom:10}}>
+          删除照片
+        </button>
+      )}
+
+      {/* Color picker fallback */}
+      <p style={{fontSize:12,color:"#9CA3AF",margin:"10px 0 8px",textAlign:"center"}}>或选择颜色头像</p>
+      <div style={{display:"flex",gap:12,justifyContent:"center",flexWrap:"wrap"}}>
+        {AVATAR_COLORS.map(c=>(
+          <div key={c} onClick={()=>onColor(c)} style={{width:40,height:40,borderRadius:"50%",background:c,cursor:"pointer",border:currentColor===c&&!currentPhoto?"3px solid #3B1F5E":"3px solid transparent"}} />
+        ))}
+      </div>
     </div>
   );
 }
