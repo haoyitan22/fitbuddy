@@ -21,24 +21,24 @@ const BODY_PARTS: { key: BodyPart; label: string; emoji: string }[] = [
 
 const VIDEOS: Record<BodyPart, VideoItem[]> = {
   full: [
-    { id: "UItWltVZZmE", title: "10 Min Full Body Workout", duration: "10分钟", level: "入门" },
-    { id: "ml6cT4AZdqI", title: "20 Min Full Body HIIT", duration: "20分钟", level: "进阶" },
-    { id: "UBMk30rjy0o", title: "20 Min Full Body - Pamela Reif", duration: "20分钟", level: "入门" },
+    { id: "cbKkB3POqaY", title: "Full Body Workout", duration: "10分钟", level: "入门" },
+    { id: "9mAk2JQuXSA", title: "Full Body HIIT", duration: "20分钟", level: "进阶" },
+    { id: "W4eKVKwf3rQ", title: "Fat Burn Cardio", duration: "30分钟", level: "入门" },
   ],
   abs: [
-    { id: "RyFmZEQj92s", title: "10 Min Ab Workout - Pamela Reif", duration: "10分钟", level: "入门" },
-    { id: "mmq5zZfmIws", title: "10 Min Killer Sixpack - Pamela Reif", duration: "10分钟", level: "进阶" },
-    { id: "DHD1-2P4jck", title: "10 Min Ab Workout", duration: "10分钟", level: "入门" },
+    { id: "2pLT-olgUJs", title: "Ab Workout", duration: "10分钟", level: "入门" },
+    { id: "AnYl6Nk9GOA", title: "Core Workout", duration: "15分钟", level: "进阶" },
+    { id: "8AAmaSOSyIA", title: "Sixpack Abs Workout", duration: "20分钟", level: "进阶" },
   ],
   legs: [
-    { id: "T6HTYsAVBGo", title: "10 Min Booty Workout - Pamela Reif", duration: "10分钟", level: "入门" },
-    { id: "4BOTvaRaDms", title: "20 Min Booty Workout", duration: "20分钟", level: "进阶" },
-    { id: "RMof5Bu3rxI", title: "10 Min Leg Workout", duration: "10分钟", level: "入门" },
+    { id: "ZZI__bqlBkQ", title: "Leg Workout", duration: "10分钟", level: "入门" },
+    { id: "uVt1hnAP1sI", title: "Booty Workout", duration: "20分钟", level: "进阶" },
+    { id: "90a-Tf2jrVQ", title: "Leg Day Workout", duration: "25分钟", level: "进阶" },
   ],
   arms: [
-    { id: "_eLR0KSHZSI", title: "10 Min Upper Body - Pamela Reif", duration: "10分钟", level: "入门" },
-    { id: "H0HLvsxiN5c", title: "15 Min Back Workout", duration: "15分钟", level: "进阶" },
-    { id: "IODxDxX7oi4", title: "Slim Arms Workout", duration: "10分钟", level: "入门" },
+    { id: "XYp7GQicd0c", title: "Arm Workout", duration: "10分钟", level: "入门" },
+    { id: "Y346900i9qE", title: "Back Workout", duration: "15分钟", level: "进阶" },
+    { id: "O_KGF_TSKZk", title: "Slim Arms Workout", duration: "10分钟", level: "入门" },
   ],
 };
 
