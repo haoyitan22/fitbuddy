@@ -1,12 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
 export async function POST(req: NextRequest) {
   try {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: "API key 未配置，请联系管理员" }, { status: 500 });
+    }
+
     const { imageBase64, mimeType } = await req.json();
     if (!imageBase64) return NextResponse.json({ error: "No image" }, { status: 400 });
+
+    const client = new Anthropic({ apiKey });
 
     const response = await client.messages.create({
       model: "claude-haiku-4-5-20251001",
@@ -43,8 +48,9 @@ export async function POST(req: NextRequest) {
     if (!jsonMatch) return NextResponse.json({ error: "解析失败" }, { status: 500 });
     const data = JSON.parse(jsonMatch[0]);
     return NextResponse.json(data);
-  } catch (e) {
-    console.error(e);
-    return NextResponse.json({ error: "分析失败，请重试" }, { status: 500 });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    console.error("analyze-food error:", msg);
+    return NextResponse.json({ error: `分析失败: ${msg.slice(0, 100)}` }, { status: 500 });
   }
 }
