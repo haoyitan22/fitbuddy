@@ -1,7 +1,8 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  // Required for Cloudflare Pages (@cloudflare/next-on-pages)
+  // Vercel deployment is unaffected by this flag
 };
 
 export default nextConfig;
