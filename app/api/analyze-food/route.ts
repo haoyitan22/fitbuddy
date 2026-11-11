@@ -47,7 +47,7 @@ async function ask(client: Anthropic, content: Anthropic.MessageParam["content"]
  * POST /api/analyze-food
  *   { imageBase64, mimeType }                    → { items, foods, calories, protein, carbs, fat }
  *   { mode: "estimate", items: [{name, count, unit}] } → { items }   (nutrition for hand-added foods)
- *   { mode: "suggest", targets, eaten, meals, … } → { budget, analysis, ideas: [{name, kcal, protein, why}], tip }
+ *   { mode: "suggest", targets, eaten, meals, exclude?, … } → { budget, analysis, ideas: [{name, kcal, protein, why}], tip }
  */
 export async function POST(req: NextRequest) {
   try {
@@ -84,6 +84,8 @@ unit 和 count 保持给定的值。只返回如下 JSON，不要任何额外文
           `- ${String(m.label ?? "").slice(0, 6)}：${String(m.foods ?? "").slice(0, 120)}（${num(m.calories)} kcal，蛋白质 ${num(m.protein)}g）`)
         .join("\n");
       const prefs = (Array.isArray(c.prefs) ? c.prefs : []).map(String).slice(0, 5).join("、");
+      // Dishes already shown that the user skipped ("换一批").
+      const exclude = (Array.isArray(c.exclude) ? c.exclude : []).map((x: unknown) => String(x).slice(0, 30)).slice(-12);
       const who = [
         p.gender === "male" ? "男" : p.gender === "female" ? "女" : "",
         num(p.age) ? `${num(p.age)}岁` : "",
@@ -102,9 +104,10 @@ ${meals || "- 暂无"}
 
 要求：
 1. 先定下一餐的热量预算 budget：优先补足蛋白质缺口；如果今天已经超标，不要让用户不吃，给一份低热量但能吃饱的方案（不低于 250 kcal）；如果下一餐是明天，按正常一餐安排。
-2. 给 3 个不同的中国菜搭配（家常菜、食堂或外卖都能买到），每个写清分量，用“一碗、一份、一个、半碗”这样的生活单位，不要用克。每个搭配的热量接近 budget。
+2. 给 3 个不同的中国菜搭配（家常菜、食堂或外卖都能买到），每个写清分量，只用“一碗、一份、一个、半碗、半条、一把”这样的生活单位，任何地方都不要出现克数。每个搭配的热量接近 budget。3 个搭配的主食和做法要互不相同（比如一个米饭、一个面、一个粥或杂粮）。
+${exclude.length ? `用户已经看过并且不想吃这些：${exclude.join("；")}。这次换成完全不同的菜（换主要食材和做法，不要只换配菜）。\n` : ""}蛋白质吃到或超过目标是好事，不要当成问题；需要控制的是热量和脂肪。
 3. 根据今天吃过的东西避开重复，按偏好调整，结合已摄入的脂肪和蛋白质情况说明理由。
-4. analysis：一句话点评今天到目前的摄入（具体到数字，25 字以内）。
+4. analysis：一句话点评今天到目前的摄入（具体到数字，25 字以内，语气友好，不要用“严重”这类吓人的词）。
 
 只返回如下 JSON，不要任何额外文字：
 { "budget": 整数, "analysis": "…", "ideas": [ { "name": "菜名 + 分量（20字以内）", "kcal": 整数, "protein": 整数克, "why": "一句话理由（20字以内）" } ], "tip": "一句温柔的鼓励（20字以内）" }`, 800);

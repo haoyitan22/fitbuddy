@@ -9,7 +9,7 @@ import { fallbackIdeas, planNextMeal, type MealIdea, type Totals } from "@/lib/n
 const ink = "#3B1F5E", grey = "#9CA3AF", purple = "#C084FC";
 const CACHE_KEY = "fitbuddy_next_meal";
 
-type Cached = { sig: string; ideas: MealIdea[]; budget: number | null; analysis: string; tip: string; ai: boolean };
+type Cached = { sig: string; ideas: MealIdea[]; budget: number | null; analysis: string; tip: string; ai: boolean; seen?: string[] };
 
 /**
  * Next-meal suggestion written by the model from the user's own targets
@@ -24,7 +24,8 @@ export default function NextMealCard({ mealType, totals, lastMeal }: { mealType:
   const [data, setData] = useState<Cached | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function load(force = false) {
+  /** force: skip the cache. another: "换一批" — ask for dishes different from everything shown so far. */
+  async function load(force = false, another = false) {
     if (!force) {
       try {
         const c = JSON.parse(localStorage.getItem(CACHE_KEY) || "null") as Cached | null;
@@ -32,6 +33,8 @@ export default function NextMealCard({ mealType, totals, lastMeal }: { mealType:
       } catch { /* ignore */ }
     }
     setLoading(true);
+    // Everything shown for this intake so far, so a new batch doesn't repeat it.
+    const seen = another && data && data.sig === sig ? [...(data.seen ?? []), ...data.ideas.map(i => i.name)].slice(-12) : [];
     let next: Cached;
     try {
       const u = getUser();
@@ -44,13 +47,14 @@ export default function NextMealCard({ mealType, totals, lastMeal }: { mealType:
           targets, eaten,
           meals: plan.meals.map(m => (m.foods ? m : { ...m, foods: lastMeal })),
           nextMeal: plan.nextMeal, budget: plan.budget,
+          exclude: seen,
         }),
       });
       const json = await res.json();
       if (!res.ok || !json.ideas?.length) throw new Error();
-      next = { sig, ideas: json.ideas, budget: json.budget ?? null, analysis: json.analysis || "", tip: json.tip || "", ai: true };
+      next = { sig, ideas: json.ideas, budget: json.budget ?? null, analysis: json.analysis || "", tip: json.tip || "", ai: true, seen };
     } catch {
-      next = { sig, ideas: fallbackIdeas(plan), budget: null, analysis: "", tip: "", ai: false };
+      next = { sig, ideas: fallbackIdeas(plan, seen), budget: null, analysis: "", tip: "", ai: false, seen };
     }
     setData(next);
     setLoading(false);
@@ -65,7 +69,7 @@ export default function NextMealCard({ mealType, totals, lastMeal }: { mealType:
 
   const bars = [
     { label: "热量", now: eaten.calories, goal: targets.calories, unit: "kcal", color: purple },
-    { label: "蛋白质", now: eaten.protein, goal: targets.protein, unit: "g", color: "#A78BFA" },
+    { label: "蛋白质", now: eaten.protein, goal: targets.protein, unit: "g", color: "#A78BFA", okOver: true },
     { label: "脂肪", now: eaten.fat, goal: targets.fat, unit: "g", color: "#FCD34D" },
   ];
 
@@ -79,7 +83,8 @@ export default function NextMealCard({ mealType, totals, lastMeal }: { mealType:
       {/* today vs. personal targets */}
       <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 7 }}>
         {bars.map(b => {
-          const over = b.now > b.goal;
+          // Going over the protein target is fine, so it isn't shown as a warning.
+          const over = b.now > b.goal && !("okOver" in b);
           return (
             <div key={b.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ width: 40, fontSize: 12, color: grey, flexShrink: 0 }}>{b.label}</span>
@@ -109,7 +114,17 @@ export default function NextMealCard({ mealType, totals, lastMeal }: { mealType:
         <p style={{ margin: "10px 0 0", fontSize: 13, color: ink, lineHeight: 1.5 }}>{data.analysis}</p>
       )}
 
-      <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 8, opacity: stale ? 0.55 : 1, transition: "opacity .2s" }}>
+      <div style={{ marginTop: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: ink }}>推荐吃这些</p>
+        {data && !stale && (
+          <button onClick={() => load(true, true)} disabled={loading} aria-label="换一批推荐"
+            style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 12px", borderRadius: 999, border: "1.5px solid #E9D5FF", background: "#fff", color: purple, fontSize: 12, fontWeight: 600, cursor: loading ? "default" : "pointer" }}>
+            <span style={{ display: "inline-block", animation: loading ? "nm-spin 0.8s linear infinite" : undefined }}>↻</span>
+            {loading ? "换菜中..." : "换一批"}
+          </button>
+        )}
+      </div>
+      <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8, opacity: stale || loading ? 0.55 : 1, transition: "opacity .2s" }}>
         {loading && !data && [0, 1, 2].map(i => (
           <div key={i} style={{ height: 56, borderRadius: 12, background: "linear-gradient(90deg,#F5F3FF,#FCE7F3,#F5F3FF)", backgroundSize: "200% 100%", animation: "nm-shimmer 1.2s linear infinite" }} />
         ))}
@@ -126,12 +141,12 @@ export default function NextMealCard({ mealType, totals, lastMeal }: { mealType:
           </div>
         ))}
       </div>
-      <style>{`@keyframes nm-shimmer{from{background-position:200% 0}to{background-position:0 0}}`}</style>
+      <style>{`@keyframes nm-shimmer{from{background-position:200% 0}to{background-position:0 0}}@keyframes nm-spin{to{transform:rotate(360deg)}}`}</style>
 
       {data?.tip && !stale && <p style={{ margin: "10px 0 0", fontSize: 12, color: "#7C3AED" }}>💜 {data.tip}</p>}
-      {(stale || (data && !data.ai)) && (
+      {stale && (
         <button onClick={() => load(true)} disabled={loading} style={{ marginTop: 10, width: "100%", padding: "9px", borderRadius: 10, border: "1.5px solid #E9D5FF", background: "#fff", color: purple, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
-          {loading ? "生成中..." : stale ? "按修改后的饮食更新建议" : "重新生成 AI 建议"}
+          {loading ? "生成中..." : "按修改后的饮食更新建议"}
         </button>
       )}
       {data && !data.ai && !stale && <p style={{ margin: "8px 0 0", fontSize: 11, color: "#C4B5D0" }}>AI 暂时不可用，以上为常见搭配推荐</p>}

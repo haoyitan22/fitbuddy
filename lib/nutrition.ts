@@ -131,12 +131,14 @@ const MENU: (MealIdea & { tags: string[] })[] = [
   { name: "牛肉蔬菜粥", kcal: 400, why: "温和饱腹，铁和蛋白都有", tags: ["protein"] },
 ];
 
-export function fallbackIdeas(plan: NextMealPlan): MealIdea[] {
+export function fallbackIdeas(plan: NextMealPlan, exclude: string[] = []): MealIdea[] {
   const want = new Set<string>();
   if (plan.flags.some(f => f.startsWith("蛋白质"))) want.add("protein");
   if (plan.flags.some(f => f.startsWith("脂肪"))) want.add("lowfat");
   if (plan.budget < 350) want.add("light");
-  return MENU
+  const skip = new Set(exclude);
+  const pool = MENU.filter(m => !skip.has(m.name));
+  return (pool.length >= 3 ? pool : MENU)
     .map(m => ({ m, score: -Math.abs(m.kcal - plan.budget) / 50 + m.tags.filter(t => want.has(t)).length * 2 }))
     .sort((a, b) => b.score - a.score)
     .slice(0, 3)
