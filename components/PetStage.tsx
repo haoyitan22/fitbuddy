@@ -14,8 +14,9 @@ export type PetClip = "sport" | "full" | "tap" | "celebrate";
  *
  * - Rests in a still that matches `mood`: the base still, or the last frame of the
  *   sport / full transform clip, so a finished transform never jumps.
- * - `autoTransform`: when the mood is sport or full and that transform has not played
- *   today, it plays once on mount and then holds its last frame.
+ * - `autoTransform`: when the mood is sport or full, its transform plays on mount and
+ *   then holds its last frame. "daily" = only the first time today (small cards);
+ *   "always" = every time the component mounts (the pet page).
  * - `trigger`: play a clip now (bump `id` to replay). Used for the check-in overlay
  *   and the demo buttons.
  * - Tapping plays the tap clip when the pet is in its base pose; otherwise (or for
@@ -30,7 +31,7 @@ export default function PetStage({
   pet?: Partial<Pet> | string | null;
   size?: number;
   mood?: PetMood;
-  autoTransform?: boolean;
+  autoTransform?: boolean | "daily" | "always";
   trigger?: { clip: PetClip; id: number } | null;
   interactive?: boolean;
   onClipEnd?: (clip: PetClip) => void;
@@ -45,6 +46,8 @@ export default function PetStage({
 
   const [playing, setPlaying] = useState<PetClip | null>(null);
   const [visible, setVisible] = useState(false);
+  // A transform replayed from its held end pose fades in instead of cutting to the start pose.
+  const [fromHeld, setFromHeld] = useState(false);
   const [squish, setSquish] = useState(0);
   const [reduced, setReduced] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -58,7 +61,7 @@ export default function PetStage({
     if (!autoTransform || reduced) return;
     if (mood === "idle") return;
     if (!clips[mood]) return;
-    if (hasPlayedToday(mood)) return;
+    if (autoTransform !== "always" && hasPlayedToday(mood)) return;
     markPlayedToday(mood);
     setPlaying(mood);
   }, [mood, autoTransform, reduced, kind]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -77,13 +80,14 @@ export default function PetStage({
     if (!playing || !v) return;
     const isTransform = playing === "sport" || playing === "full";
     // Transforms start on the base still, which is also their poster, so show at once.
-    setVisible(isTransform);
+    setVisible(isTransform && !fromHeld);
     v.currentTime = 0;
-    v.play().catch(() => { setPlaying(null); setVisible(false); });
+    v.play().catch(() => { setPlaying(null); setVisible(false); setFromHeld(false); });
   }, [playing]);
 
   function handleEnded() {
     const done = playing;
+    setFromHeld(false);
     if (done === "sport" || done === "full") {
       // The resting still is this clip's last frame, so swap without a fade.
       setPlaying(null);
@@ -99,6 +103,7 @@ export default function PetStage({
   function handleTap() {
     if (!interactive || playing) return;
     if (!reduced && clips.tap && mood === "idle") setPlaying("tap");
+    else if (!reduced && mood !== "idle" && clips[mood]) { setFromHeld(true); setPlaying(mood); }
     else setSquish(n => n + 1);
   }
 
@@ -107,8 +112,9 @@ export default function PetStage({
     return <div style={{ fontSize: size * 0.55, lineHeight: 1 }}>{emoji}</div>;
   }
 
-  // While a transform plays, the layer underneath is its starting pose.
-  const underStill = playing === "sport" || playing === "full" ? base : restStill!;
+  // While a transform plays, the layer underneath is its starting pose,
+  // except on a tap-replay, where the held end pose stays put until the clip fades in.
+  const underStill = (playing === "sport" || playing === "full") && !fromHeld ? base : restStill!;
   const src = playing ? clips[playing] : undefined;
 
   return (

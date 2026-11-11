@@ -139,7 +139,7 @@ export default function PetPage() {
             ))}
 
             {/* Animated pet: tap it */}
-            <PetStage pet={pet} size={200} mood={mood} trigger={trigger} />
+            <PetStage pet={pet} size={200} mood={mood} trigger={trigger} autoTransform="always" />
 
             {/* Equipped decoration */}
             {equippedItem && (
