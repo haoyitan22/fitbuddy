@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getTempData, saveUserData, createSession, clearTempData } from "@/lib/auth";
 import type { UserProfile, Pet } from "@/lib/auth";
+import PetAvatar from "@/components/PetAvatar";
 
 const confettiColors = ["#C084FC","#F9A8D4","#FCD34D","#86EFAC","#93C5FD","#FB923C"];
 
@@ -97,7 +98,7 @@ export default function NamingPage() {
       <div style={{ minHeight: "100vh", background: "linear-gradient(160deg, #FDF4FF 0%, #FFF0F6 100%)", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "40px 24px" }}>
         <Confetti />
         <div style={{ textAlign: "center", animation: "popIn 0.6s ease forwards", maxWidth: "380px" }}>
-          <div style={{ fontSize: "88px", marginBottom: "24px", animation: "floatPet 2s ease-in-out infinite" }}>{pet.emoji}</div>
+          <div style={{ display: "flex", justifyContent: "center", marginBottom: "24px", animation: "floatPet 2s ease-in-out infinite" }}><PetAvatar pet={pet} size={160} /></div>
           <h1 style={{ fontSize: "28px", fontWeight: 800, color: "#3B1F5E", margin: 0 }}>
             {trimmed} 来啦！🎉
           </h1>
@@ -114,8 +115,8 @@ export default function NamingPage() {
       <div style={{ maxWidth: "430px", width: "100%", textAlign: "center" }}>
 
         {/* 浮动宠物 emoji */}
-        <div style={{ fontSize: "88px", marginBottom: "24px", display: "inline-block", animation: "floatPet 2.5s ease-in-out infinite" }}>
-          {pet?.emoji ?? "🐾"}
+        <div style={{ marginBottom: "24px", display: "inline-block", animation: "floatPet 2.5s ease-in-out infinite" }}>
+          <PetAvatar pet={pet ?? "🐾"} size={160} />
         </div>
         <style>{`
           @keyframes floatPet {

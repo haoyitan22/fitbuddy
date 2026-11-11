@@ -2,6 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { getUserData } from "@/lib/auth";
+import type { Pet } from "@/lib/auth";
+import PetStage from "@/components/PetStage";
+import { getStreak, STREAK_CELEBRATE } from "@/lib/pets";
 
 type BodyPart = "full" | "abs" | "legs" | "arms";
 
@@ -80,7 +83,9 @@ export default function WorkoutPage() {
   const [weekDates, setWeekDates] = useState<string[]>([]);
   const [checkedDates, setCheckedDates] = useState<string[]>([]);
   const [celebrating, setCelebrating] = useState(false);
-  const [petEmoji, setPetEmoji] = useState("🐾");
+  const [pet, setPet] = useState<Pet | null>(null);
+  const [overlayClip, setOverlayClip] = useState<"sport" | "celebrate">("sport");
+  const [streakDays, setStreakDays] = useState(0);
   const [petName, setPetName] = useState("宠物");
   const [completedVideos, setCompletedVideos] = useState<Set<string>>(new Set());
 
@@ -90,7 +95,7 @@ export default function WorkoutPage() {
     setCheckedIn(dates.includes(todayKey()));
     setWeekDates(getWeekDates());
     const user = getUserData();
-    if (user?.pet) setPetEmoji(user.pet.emoji);
+    if (user?.pet) setPet(user.pet);
     if (user?.petName) setPetName(user.petName);
   }, []);
 
@@ -108,8 +113,12 @@ export default function WorkoutPage() {
       saveCheckin(today);
       setCheckedIn(true);
       setCheckedDates(prev => [...prev, today]);
+      // A streak gets the bigger celebration; a normal check-in gets the sport transform.
+      const s = getStreak();
+      setStreakDays(s);
+      setOverlayClip(s >= STREAK_CELEBRATE ? "celebrate" : "sport");
       setCelebrating(true);
-      setTimeout(() => setCelebrating(false), 3000);
+      setTimeout(() => setCelebrating(false), 5000);
     }
   }
 
@@ -117,16 +126,22 @@ export default function WorkoutPage() {
     <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #FDF4FF 0%, #FFF0F6 100%)", paddingBottom: "80px" }}>
       {/* Celebration overlay */}
       {celebrating && (
-        <div style={{
+        <div onClick={() => setCelebrating(false)} style={{
           position: "fixed", inset: 0, zIndex: 1000,
           background: "rgba(253,244,255,0.95)",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         }}>
-          <div style={{ fontSize: "80px", marginBottom: "16px" }}>{petEmoji}</div>
-          <div style={{ fontSize: "28px", fontWeight: 700, color: "#3B1F5E", marginBottom: "8px" }}>
-            {petName} 为你骄傲！🎉
+          <div style={{ marginBottom: "16px", position: "relative", zIndex: 1 }}>
+            <PetStage pet={pet} size={220} autoTransform={false} interactive={false}
+              mood={overlayClip === "sport" ? "sport" : "idle"}
+              trigger={{ clip: overlayClip, id: 1 }} />
           </div>
-          <div style={{ fontSize: "16px", color: "#9CA3AF" }}>今天又完成运动打卡，棒棒的！</div>
+          <div style={{ fontSize: "28px", fontWeight: 700, color: "#3B1F5E", marginBottom: "8px" }}>
+            {overlayClip === "celebrate" ? `连续打卡 ${streakDays} 天！🎉` : `${petName} 为你骄傲！🎉`}
+          </div>
+          <div style={{ fontSize: "16px", color: "#9CA3AF" }}>
+            {overlayClip === "celebrate" ? `${petName}开心得跳起来啦，继续保持！` : "今天又完成运动打卡，棒棒的！"}
+          </div>
           {/* Confetti */}
           <div style={{ position: "absolute", inset: 0, overflow: "hidden", pointerEvents: "none" }}>
             {Array.from({ length: 30 }).map((_, i) => (

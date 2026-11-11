@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { getUser, saveUserData, logout } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
+import PetAvatar from "@/components/PetAvatar";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis,
   Tooltip, ResponsiveContainer, Cell,
@@ -246,7 +247,7 @@ export default function ProfilePage() {
               <p style={{fontSize:12,color:"#9CA3AF",margin:0}}>第 {journeyDays} 天的健康之旅</p>
             </div>
             <div style={{textAlign:"right"}}>
-              <div style={{fontSize:28}}>{user?.pet?.emoji??"🐾"}</div>
+              <div style={{display:"flex",justifyContent:"flex-end",marginBottom:4}}><PetAvatar pet={user?.pet ?? "🐾"} size={44} crop="head" /></div>
               <div style={{fontSize:12,color:"#C084FC",fontWeight:600}}>🪙 {coins}</div>
             </div>
           </div>

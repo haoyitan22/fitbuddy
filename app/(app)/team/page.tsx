@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { getUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
+import PetAvatar from "@/components/PetAvatar";
 
 /* ── types ── */
 interface TeamData {
@@ -226,7 +227,7 @@ export default function TeamPage() {
             { emoji:"🐱", pet:"橘子", name:"阿杰", checked:false },
           ].map((m, i) => (
             <div key={i} style={{ display:"flex", alignItems:"center", padding:"10px 0", borderBottom: i<2 ? "1px solid #F9FAFB" : "none" }}>
-              <div style={{ width:40, height:40, borderRadius:"50%", background:"#F3E8FF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, marginRight:12 }}>{m.emoji}</div>
+              <div style={{ marginRight:12 }}><PetAvatar pet={m.emoji} size={40} crop="head" /></div>
               <div style={{ flex:1 }}>
                 <p style={{ fontSize:14, fontWeight:600, color:"#3B1F5E", margin:0 }}>{m.name}</p>
                 <p style={{ fontSize:12, color:"#9CA3AF", margin:0 }}>{m.pet}</p>
@@ -242,7 +243,7 @@ export default function TeamPage() {
           {rankData.map((r, i) => (
             <div key={i} style={{ display:"flex", alignItems:"center", padding:"10px 12px", borderRadius:10, background: r.bg, marginBottom:6 }}>
               <span style={{ fontSize:22, marginRight:10 }}>{r.rank}</span>
-              <span style={{ fontSize:22, marginRight:8 }}>{r.emoji}</span>
+              <span style={{ marginRight:8, display:"inline-flex" }}><PetAvatar pet={r.emoji} size={32} crop="head" /></span>
               <div style={{ flex:1 }}>
                 <p style={{ fontSize:13, fontWeight:600, color:"#3B1F5E", margin:0 }}>{r.name}</p>
                 <p style={{ fontSize:11, color:"#9CA3AF", margin:0 }}>{r.pet}</p>
@@ -258,7 +259,7 @@ export default function TeamPage() {
           {feed.map(f => (
             <div key={f.id} style={{ background:"#FAFAFA", borderRadius:12, padding:"12px", marginBottom:10 }}>
               <div style={{ display:"flex", gap:10 }}>
-                <div style={{ width:46, height:46, borderRadius:"50%", background:"#F3E8FF", display:"flex", alignItems:"center", justifyContent:"center", fontSize:26, flexShrink:0 }}>{f.petEmoji}</div>
+                <PetAvatar pet={f.petEmoji} size={46} crop="head" />
                 <div style={{ flex:1 }}>
                   <p style={{ fontSize:13, fontWeight:700, color:"#3B1F5E", margin:"0 0 3px" }}>{f.desc}</p>
                   <p style={{ fontSize:12, color:"#9CA3AF", margin:0 }}>{f.detail}</p>

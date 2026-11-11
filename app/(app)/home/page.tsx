@@ -7,6 +7,9 @@ import { getUser } from "@/lib/auth";
 import { getMeals, getTodayTotals } from "@/lib/meals";
 import type { UserProfile } from "@/lib/auth";
 import type { MealRecord, MealType } from "@/lib/meals";
+import PetAvatar from "@/components/PetAvatar";
+import PetStage from "@/components/PetStage";
+import { CALORIE_GOAL, getPetMood, type PetMood } from "@/lib/pets";
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -53,12 +56,14 @@ export default function HomePage() {
   const [water, setWater] = useState(0);
   const [customInput, setCustomInput] = useState(false);
   const [customVal, setCustomVal] = useState("");
+  const [mood, setMood] = useState<PetMood>("idle");
 
   useEffect(() => {
     setUser(getUser());
     setMeals(getMeals());
     setTotals(getTodayTotals());
     setWater(loadWater());
+    setMood(getPetMood());
   }, []);
 
   function addWater(ml: number) {
@@ -72,7 +77,6 @@ export default function HomePage() {
   }
 
   const WATER_GOAL = 1800;
-  const CALORIE_GOAL = 1500;
   const remaining = Math.max(CALORIE_GOAL - totals.calories, 0);
   const unrecorded = MEAL_CONFIG.filter(m => !meals.find(r => r.mealType === m.type));
 
@@ -89,8 +93,8 @@ export default function HomePage() {
         </div>
         {user?.pet && (
           <Link href="/pet" style={{ textDecoration: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
-            <div style={{ width: "52px", height: "52px", borderRadius: "50%", background: "rgba(192,132,252,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "28px", border: "2px solid rgba(192,132,252,0.25)" }}>
-              {user.pet.emoji}
+            <div style={{ width: "52px", height: "52px", borderRadius: "50%", border: "2px solid rgba(192,132,252,0.25)", overflow: "hidden" }}>
+              <PetAvatar pet={user.pet} size={48} crop="head" />
             </div>
             <span style={{ fontSize: "11px", color: "#C084FC", fontWeight: 600 }}>{user.petName}</span>
           </Link>
@@ -207,13 +211,15 @@ export default function HomePage() {
       {user?.pet && (
         <Link href="/pet" style={{ textDecoration: "none" }}>
           <div style={{ ...card, background: "linear-gradient(135deg,#FFF0F6 0%,#FDF4FF 100%)", border: "1px solid rgba(249,168,212,0.3)", display: "flex", alignItems: "center", gap: "14px", cursor: "pointer" }}>
-            <span style={{ fontSize: "44px", flexShrink: 0 }}>{user.pet.emoji}</span>
+            <PetStage pet={user.pet} size={76} mood={mood} interactive={false} />
             <div style={{ flex: 1 }}>
               <p style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: 700, color: "#3B1F5E" }}>{user.petName}</p>
               <p style={{ margin: 0, fontSize: "12px", color: "#9CA3AF", lineHeight: "1.5" }}>
-                {unrecorded.length > 0
-                  ? `${unrecorded[0].label}还没记录，快来喂我吃饭吧！`
-                  : "今天所有餐食都记录啦，棒棒的！🎉"}
+                {mood === "full"
+                  ? "今天吃得有点多，我撑得犯困啦，明天一起动起来～"
+                  : unrecorded.length > 0
+                    ? `${unrecorded[0].label}还没记录，快来喂我吃饭吧！`
+                    : "今天所有餐食都记录啦，棒棒的！🎉"}
               </p>
             </div>
             <span style={{ fontSize: "16px", color: "#F9A8D4" }}>›</span>

@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { saveTempData } from "@/lib/auth";
 import type { Pet } from "@/lib/auth";
+import PetAvatar from "@/components/PetAvatar";
 
 const pets: Pet[] = [
   { emoji: "🐼", species: "熊猫", name: "胖达", desc: "憨厚可爱，最懂减脂的辛苦" },
@@ -49,7 +50,7 @@ export default function RegisterStep4() {
               transition: "all 0.2s",
               boxShadow: selected===i?"0 4px 20px rgba(192,132,252,0.25)":"0 2px 8px rgba(0,0,0,0.05)",
             }}>
-              <div style={{ fontSize: "48px", marginBottom: "10px" }}>{pet.emoji}</div>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: "10px" }}><PetAvatar pet={pet} size={96} breathe={selected===i} /></div>
               <div style={{ fontSize: "15px", fontWeight: 700, color: selected===i?"#C084FC":"#3B1F5E", marginBottom: "6px" }}>{pet.name}</div>
               <div style={{ fontSize: "11px", color: "#9CA3AF", lineHeight: "1.4" }}>{pet.desc}</div>
             </button>

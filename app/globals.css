@@ -25,3 +25,10 @@ body {
   min-height: 100vh;
   color: var(--color-text-main);
 }
+
+/* ── Pet animation helpers (components/PetAvatar.tsx, PetStage.tsx) ── */
+.pet-breathe { transform-origin: 50% 88%; animation: pet-breathe 3.6s ease-in-out infinite; }
+.pet-squish  { transform-origin: 50% 90%; animation: pet-squish 0.5s cubic-bezier(.3,1.6,.5,1); }
+@keyframes pet-breathe { 0%,100% { transform: scale(1,1); } 50% { transform: scale(1.012,1.022); } }
+@keyframes pet-squish  { 0% { transform: scale(1,1); } 30% { transform: scale(1.08,.9); } 60% { transform: scale(.96,1.05); } 100% { transform: scale(1,1); } }
+@media (prefers-reduced-motion: reduce) { .pet-breathe, .pet-squish { animation: none; } }

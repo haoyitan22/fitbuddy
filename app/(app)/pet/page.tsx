@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { getUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
+import PetStage, { type PetClip } from "@/components/PetStage";
+import PetAvatar from "@/components/PetAvatar";
+import { getPetMood, getStreak, STREAK_CELEBRATE, type PetMood } from "@/lib/pets";
 
 function getDaysSince(isoDate: string): number {
   const join = new Date(isoDate);
@@ -66,19 +69,31 @@ export default function PetPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [checkinCount, setCheckinCount] = useState(0);
   const [store, setStore] = useState<PetStore>({ coins: 128, owned: [], equipped: null });
+  const [mood, setMood] = useState<PetMood>("idle");
+  const [streak, setStreak] = useState(0);
+  const [trigger, setTrigger] = useState<{ clip: PetClip; id: number } | null>(null);
+  const [demo, setDemo] = useState(false);
 
   useEffect(() => {
     setUser(getUser());
     setCheckinCount(getWeekCheckinCount());
     setStore(loadStore());
+    setMood(getPetMood());
+    setStreak(getStreak());
+    setDemo(new URLSearchParams(window.location.search).has("demo"));
   }, []);
+
+  // Demo panel: preview each effect without real meals or check-ins.
+  function preview(clip: PetClip) {
+    if (clip === "sport" || clip === "full") setMood(clip);
+    if (clip === "celebrate" || clip === "tap") setMood("idle");
+    setTrigger({ clip, id: Date.now() });
+  }
 
   const pet = user?.pet;
   const days = user?.petJoinDate ? getDaysSince(user.petJoinDate) : 1;
 
-  // State: healthy ≥5, overeaten ≤2, normal otherwise
-  const petState: "healthy" | "overeaten" | "normal" =
-    checkinCount >= 5 ? "healthy" : checkinCount <= 2 ? "overeaten" : "normal";
+  const streaking = streak >= STREAK_CELEBRATE;
 
   const equippedItem = SHOP_ITEMS.find(i => i.id === store.equipped);
 
@@ -114,20 +129,17 @@ export default function PetPage() {
         {/* ── 1. Pet card ── */}
         <div style={{ background: "linear-gradient(135deg,#F3E8FF,#FCE7F3)", borderRadius: 20, padding: "28px 20px 20px", marginBottom: 14, boxShadow: "0 4px 20px rgba(192,132,252,.15)", textAlign: "center", position: "relative", overflow: "hidden" }}>
           {/* Animated emoji area */}
-          <div style={{ height: 250, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", position: "relative" }}>
+          <div style={{ minHeight: 250, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, position: "relative", marginBottom: 12 }}>
             {/* Floating particles */}
-            {petState === "normal" && Array.from({length:5}).map((_,i) => (
+            {mood === "idle" && Array.from({length:5}).map((_,i) => (
               <span key={i} style={{ position:"absolute", fontSize:16, animation:`starFloat ${1.5+i*.4}s ease-in infinite ${i*.3}s`, left:`${15+i*14}%`, top:`${30+i*8}%`, opacity:.8 }}>✨</span>
             ))}
-            {petState === "healthy" && Array.from({length:6}).map((_,i) => (
+            {mood === "sport" && Array.from({length:6}).map((_,i) => (
               <span key={i} style={{ position:"absolute", fontSize:18, animation:`heartFloat ${1.4+i*.3}s ease-in infinite ${i*.25}s`, left:`${10+i*13}%`, top:`${20+i*10}%`, opacity:.9 }}>💕</span>
             ))}
 
-            {/* Main emoji */}
-            <div style={{ fontSize: 120, animation:"float 3s ease-in-out infinite", lineHeight:1, position:"relative" }}>
-              {pet.emoji}
-              {petState === "overeaten" && <span style={{ position:"absolute", bottom:0, right:-20, fontSize:36 }}>🍔</span>}
-            </div>
+            {/* Animated pet: tap it */}
+            <PetStage pet={pet} size={200} mood={mood} trigger={trigger} />
 
             {/* Equipped decoration */}
             {equippedItem && (
@@ -135,14 +147,14 @@ export default function PetPage() {
             )}
 
             {/* State message */}
-            {petState === "overeaten" && (
+            {mood === "full" && (
               <p style={{ fontSize:13, color:"#EF4444", fontWeight:600, marginTop:8, background:"rgba(255,255,255,.7)", borderRadius:20, padding:"4px 14px" }}>
-                本周吃多了，一起动起来吧～
+                今天吃得有点多，{user?.petName}撑得犯困啦～
               </p>
             )}
-            {petState === "healthy" && (
+            {mood === "sport" && (
               <p style={{ fontSize:13, color:"#10B981", fontWeight:600, marginTop:8, background:"rgba(255,255,255,.7)", borderRadius:20, padding:"4px 14px" }}>
-                状态超棒！继续保持～
+                {streaking ? `连续打卡 ${streak} 天，元气满满！` : "今天运动打卡啦，元气满满！"}
               </p>
             )}
           </div>
@@ -154,6 +166,19 @@ export default function PetPage() {
             加入第 {days} 天
           </span>
         </div>
+
+        {/* Demo panel: open /pet?demo=1 to preview each effect */}
+        {demo && (
+          <div style={{ background:"#fff", borderRadius:16, padding:"12px 14px", marginBottom:14, boxShadow:"0 2px 10px rgba(192,132,252,.08)" }}>
+            <p style={{ fontSize:13, fontWeight:600, color:"#3B1F5E", margin:"0 0 8px" }}>动画预览（仅 demo 模式可见）</p>
+            <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8 }}>
+              {([["sport","打卡运动"],["full","吃撑"],["celebrate","连续打卡庆祝"],["tap","被点击"]] as [PetClip,string][]).map(([clip,label]) => (
+                <button key={clip} onClick={() => preview(clip)} style={{ padding:"8px 4px", borderRadius:10, border:"none", background:"#F3E8FF", color:"#7C3AED", fontSize:12, fontWeight:600, cursor:"pointer" }}>{label}</button>
+              ))}
+            </div>
+            <button onClick={() => setMood("idle")} style={{ marginTop:8, width:"100%", padding:"6px", borderRadius:10, border:"1px solid #EDE9FE", background:"transparent", color:"#9CA3AF", fontSize:12, cursor:"pointer" }}>恢复默认状态</button>
+          </div>
+        )}
 
         {/* ── 2. Stats bar ── */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:14 }}>
@@ -175,7 +200,7 @@ export default function PetPage() {
           <p style={{ fontSize:15, fontWeight:600, color:"#3B1F5E", margin:"0 0 10px" }}>当前装扮</p>
           {equippedItem ? (
             <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, fontSize:44 }}>
-              <span>{pet.emoji}</span>
+              <PetAvatar pet={pet} size={56} />
               <span style={{ fontSize:20, color:"#9CA3AF" }}>+</span>
               <span>{equippedItem.emoji}</span>
               <span style={{ fontSize:13, color:"#C084FC", fontWeight:600 }}>{equippedItem.name}</span>
