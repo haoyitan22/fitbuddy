@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { saveMeal } from "@/lib/meals";
-import type { MealType } from "@/lib/meals";
+import { saveMeal, getMeals } from "@/lib/meals";
+import type { MealType, MealRecord } from "@/lib/meals";
 
 const MEAL_LABELS: Record<MealType, string> = {
   breakfast: "早餐",
@@ -31,6 +31,33 @@ export default function RecordPage() {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
+  // Today's saved record for the selected meal, shown read-only until the user retakes it.
+  const [viewing, setViewing] = useState<MealRecord | null>(null);
+
+  function savedRecord(t: MealType) {
+    return getMeals().find(m => m.mealType === t) ?? null;
+  }
+
+  // Opened from the home page with ?meal=lunch etc.: select that meal and show its record.
+  useEffect(() => {
+    const m = new URLSearchParams(window.location.search).get("meal");
+    const t: MealType = m === "lunch" || m === "dinner" || m === "breakfast" ? m : "breakfast";
+    setMealType(t);
+    setViewing(savedRecord(t));
+  }, []);
+
+  function selectMeal(t: MealType) {
+    setMealType(t);
+    reset();
+    setSaved(false);
+    setViewing(savedRecord(t));
+  }
+
+  function retake() {
+    setViewing(null);
+    reset();
+    fileRef.current?.click();
+  }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -111,7 +138,7 @@ export default function RecordPage() {
         <p style={{ margin: "0 0 10px", fontSize: "13px", color: "#9CA3AF", fontWeight: 600 }}>选择餐次</p>
         <div style={{ display: "flex", gap: "8px" }}>
           {(["breakfast","lunch","dinner"] as MealType[]).map(t => (
-            <button key={t} onClick={() => setMealType(t)} style={{
+            <button key={t} onClick={() => selectMeal(t)} style={{
               flex: 1, padding: "10px 0", borderRadius: "12px",
               border: `1.5px solid ${mealType===t?"#C084FC":"#F3E8FF"}`,
               background: mealType===t?"rgba(192,132,252,0.1)":"#fff",
@@ -124,8 +151,45 @@ export default function RecordPage() {
         </div>
       </div>
 
+      {/* 已记录：查看这餐的分析结果 */}
+      {viewing && (
+        <div style={{ background: "#fff", borderRadius: "16px", overflow: "hidden", boxShadow: "0 2px 16px rgba(192,132,252,0.12)" }}>
+          {viewing.imageBase64 && (
+            <img src={viewing.imageBase64} alt="food" style={{ width: "100%", maxHeight: "280px", objectFit: "cover", display: "block" }} />
+          )}
+          <div style={{ padding: "20px" }}>
+            <p style={{ margin: "0 0 14px", fontSize: "14px", fontWeight: 700, color: "#3B1F5E" }}>🍽 {viewing.foods}</p>
+            <div style={{ textAlign: "center", padding: "16px 0", borderBottom: "1px solid #F9F5FF" }}>
+              <span style={{ fontSize: "42px", fontWeight: 800, color: "#C084FC" }}>{viewing.calories}</span>
+              <span style={{ fontSize: "16px", color: "#9CA3AF", marginLeft: "4px" }}>kcal</span>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-around", paddingTop: "16px" }}>
+              {[
+                { label: "蛋白质", value: viewing.protein, color: "#C084FC" },
+                { label: "碳水",   value: viewing.carbs,   color: "#F9A8D4" },
+                { label: "脂肪",   value: viewing.fat,     color: "#FCD34D" },
+              ].map(n => (
+                <div key={n.label} style={{ textAlign: "center" }}>
+                  <p style={{ margin: 0, fontSize: "22px", fontWeight: 700, color: n.color }}>{n.value}g</p>
+                  <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#9CA3AF" }}>{n.label}</p>
+                </div>
+              ))}
+            </div>
+            <p style={{ margin: "16px 0 0", fontSize: "12px", color: "#C4B5D0", textAlign: "center" }}>
+              今天的{MEAL_LABELS[mealType]}已记录
+            </p>
+            <button onClick={retake} style={{ ...btn, marginTop: "12px", background: "#F9F5FF", color: "#9CA3AF" }}>
+              重新拍照，替换这条记录
+            </button>
+            <button onClick={() => router.push("/home")} style={{ ...btn, marginTop: "8px", background: "#C084FC", color: "#fff" }}>
+              返回首页
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* 拍照区域 */}
-      <div onClick={() => !saved && fileRef.current?.click()} style={{
+      {!viewing && <div onClick={() => !saved && fileRef.current?.click()} style={{
         background: imagePreview ? "transparent" : "#fff",
         borderRadius: "16px",
         border: imagePreview ? "none" : "2px dashed #F3E8FF",
@@ -143,7 +207,7 @@ export default function RecordPage() {
             <p style={{ fontSize: "12px", color: "#C4B5D0", marginTop: "4px" }}>支持 JPG、PNG、HEIC</p>
           </>
         )}
-      </div>
+      </div>}
       <input ref={fileRef} type="file" accept="image/*" capture="environment"
         onChange={handleFileChange} style={{ display: "none" }} />
 

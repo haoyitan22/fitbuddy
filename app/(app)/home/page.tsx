@@ -132,7 +132,7 @@ export default function HomePage() {
             const record = meals.find(m => m.mealType === type);
             return (
               <div key={type}
-                onClick={() => router.push("/record")}
+                onClick={() => router.push(`/record?meal=${type}`)}
                 style={{
                   display: "flex", alignItems: "center", justifyContent: "space-between",
                   padding: "12px 14px", borderRadius: "12px", cursor: "pointer",
