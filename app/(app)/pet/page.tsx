@@ -84,7 +84,8 @@ export default function PetPage() {
 
   // Demo panel: preview each effect without real meals or check-ins.
   function preview(clip: PetClip) {
-    if (clip === "sport" || clip === "full") setMood(clip);
+    // A mood change plays the full arrival sequence (e.g. sport, then putting the outfit back on).
+    if ((clip === "sport" || clip === "full") && mood !== clip) { setMood(clip); return; }
     if (clip === "celebrate" || clip === "tap") setMood("idle");
     setTrigger({ clip, id: Date.now() });
   }
@@ -95,6 +96,8 @@ export default function PetPage() {
   const streaking = streak >= STREAK_CELEBRATE;
 
   const equippedItem = SHOP_ITEMS.find(i => i.id === store.equipped && i.kind !== "background");
+  // The pet itself wears the equipped item unless it is stuffed (that nudge stays on show).
+  const dressed = mood !== "full" && !!equippedItem && !!petWear(petKindOf(pet), equippedItem.id);
   const bgItem = SHOP_ITEMS.find(i => i.id === store.background && i.kind === "background");
   const goalReached = !!user && user.weight > 0 && user.targetWeight > 0 && user.weight <= user.targetWeight;
 
@@ -153,7 +156,7 @@ export default function PetPage() {
             {/* Animated pet: tap it. The equipped accessory sits beside it. */}
             <div style={{ position: "relative", ...(bgItem ? { borderRadius: 38, boxShadow: "0 0 0 4px rgba(255,255,255,.85), 0 8px 24px rgba(0,0,0,.25)" } : null) }}>
               <PetStage pet={pet} size={200} mood={mood} trigger={trigger} autoTransform="always" wear={store.equipped} />
-              {equippedItem && !(mood === "idle" && petWear(petKindOf(pet), equippedItem.id)) && (
+              {equippedItem && !dressed && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={equippedItem.img} alt={equippedItem.name} title={equippedItem.name}
                   className={equippedItem.id === "tumbler" && waterDone ? "shop-glow" : undefined}
@@ -171,6 +174,7 @@ export default function PetPage() {
             {mood === "sport" && (
               <p style={{ fontSize:13, color:"#10B981", fontWeight:600, marginTop:8, background:"rgba(255,255,255,.7)", borderRadius:20, padding:"4px 14px" }}>
                 {streaking ? `连续打卡 ${streak} 天，元气满满！` : "今天运动打卡啦，元气满满！"}
+                {dressed && equippedItem ? ` 还带上了${equippedItem.name}～` : ""}
               </p>
             )}
           </div>
