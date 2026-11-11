@@ -3,7 +3,12 @@ export type MealType = "breakfast" | "lunch" | "dinner";
 /** One food in a meal, with the portion it was estimated for. */
 export interface FoodItem {
   name: string;
+  /** Total grams of this food in the meal (what nutrition is scaled by). */
   grams: number;
+  /** Everyday unit people count in: 串、只、个、碗、份… (older items have none → "份"). */
+  unit?: string;
+  /** How many units; grams / count is one unit's weight. */
+  count?: number;
   calories: number;
   protein: number;
   carbs: number;

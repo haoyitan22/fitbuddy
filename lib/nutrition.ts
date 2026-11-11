@@ -1,6 +1,6 @@
 import type { FoodItem, MealRecord, MealType } from "@/lib/meals";
 import { getMeals } from "@/lib/meals";
-import { CALORIE_GOAL } from "@/lib/pets";
+import { getDailyTargets, type DailyTargets } from "@/lib/goals";
 
 export const MEAL_ORDER: MealType[] = ["breakfast", "lunch", "dinner"];
 export const MEAL_LABELS: Record<MealType, string> = { breakfast: "早餐", lunch: "午餐", dinner: "晚餐" };
@@ -17,17 +17,50 @@ export function sumItems(items: FoodItem[]): Totals {
 
 /** Change an item's portion; nutrition scales with it. */
 export function scaleItem(item: FoodItem, grams: number): FoodItem {
-  const g = Math.max(0, Math.round(grams));
+  const g = Math.max(1, Math.round(grams));
   if (item.grams <= 0) return { ...item, grams: g };
   const f = g / item.grams;
   const r = (n: number) => Math.round(n * f * 10) / 10;
   return { ...item, grams: g, calories: r(item.calories), protein: r(item.protein), carbs: r(item.carbs), fat: r(item.fat) };
 }
 
+/* ── everyday units ─────────────────────────────────────────── */
+
+/** Units offered when adding a food by hand. */
+export const UNITS = ["份", "碗", "个", "串", "只", "块", "片", "杯"];
+/** Units that go up and down in halves (things you don't count one by one). */
+const HALF_UNITS = new Set(["份", "碗", "盘", "杯", "勺", "根"]);
+
+export function unitOf(item: FoodItem): { unit: string; count: number } {
+  const unit = item.unit?.trim() || "份";
+  const count = item.count && item.count > 0 ? item.count : 1;
+  return { unit, count };
+}
+
+export function stepOf(unit: string): number {
+  return HALF_UNITS.has(unit) ? 0.5 : 1;
+}
+
+/** "半碗", "1.5 碗", "6 串" */
+export function formatCount(count: number, unit: string): string {
+  if (count === 0.5) return `半${unit}`;
+  return `${Number.isInteger(count) ? count : count.toFixed(1)} ${unit}`;
+}
+
+/** Change how many units were eaten; grams and nutrition scale with it. */
+export function setCount(item: FoodItem, count: number): FoodItem {
+  const { unit, count: old } = unitOf(item);
+  const step = stepOf(unit);
+  const c = Math.min(99, Math.max(step, Math.round(count / step) * step));
+  if (c === old) return item;
+  const perUnit = item.grams / old;
+  return { ...scaleItem(item, perUnit * c), unit, count: c };
+}
+
 /** Records saved before per-food items existed become one editable "whole portion" item. */
 export function itemsOf(record: Pick<MealRecord, "items" | "foods" | "calories" | "protein" | "carbs" | "fat">): FoodItem[] {
   if (record.items?.length) return record.items;
-  return [{ name: record.foods || "这一餐", grams: 100, calories: record.calories, protein: record.protein, carbs: record.carbs, fat: record.fat }];
+  return [{ name: record.foods || "这一餐", grams: 100, unit: "份", count: 1, calories: record.calories, protein: record.protein, carbs: record.carbs, fat: record.fat }];
 }
 
 /* ── next meal ─────────────────────────────────────────────── */
@@ -37,6 +70,8 @@ export interface NextMealPlan {
   budget: number;          // kcal suggested for it
   eaten: Totals;           // today including the current meal
   remaining: number;       // kcal left today (can be negative)
+  targets: DailyTargets;   // the user's personal daily targets
+  meals: { label: string; foods: string; calories: number; protein: number }[]; // today so far
   flags: string[];         // e.g. ["蛋白质偏低", "脂肪偏高"]
 }
 
@@ -50,7 +85,8 @@ export function planNextMeal(mealType: MealType, current: Totals): NextMealPlan 
     carbs: current.carbs + others.reduce((s, m) => s + m.carbs, 0),
     fat: current.fat + others.reduce((s, m) => s + m.fat, 0),
   };
-  const remaining = CALORIE_GOAL - eaten.calories;
+  const targets = getDailyTargets();
+  const remaining = targets.calories - eaten.calories;
 
   // Meals after this one that are still unrecorded share what is left of today's budget.
   const idx = MEAL_ORDER.indexOf(mealType);
@@ -61,22 +97,26 @@ export function planNextMeal(mealType: MealType, current: Totals): NextMealPlan 
     budget = remaining > 0 ? remaining / left.length : 300;
   } else {
     nextMeal = "明天早餐";
-    budget = CALORIE_GOAL * 0.3;
+    budget = targets.calories * 0.3;
   }
   budget = Math.max(250, Math.min(700, Math.round(budget / 10) * 10));
 
   const flags: string[] = [];
   if (remaining < 0) flags.push(`今天已超出 ${-remaining} kcal`);
-  if (eaten.calories > 0) {
-    const pShare = (eaten.protein * 4) / eaten.calories;
-    const fShare = (eaten.fat * 9) / eaten.calories;
-    if (pShare < 0.2) flags.push("蛋白质偏低");
-    if (fShare > 0.35) flags.push("脂肪偏高");
-  }
-  return { nextMeal, budget, eaten, remaining, flags };
+  const proteinGap = targets.protein - eaten.protein;
+  if (proteinGap > 10) flags.push(`蛋白质还差 ${Math.round(proteinGap)}g`);
+  if (eaten.fat > targets.fat) flags.push(`脂肪超出 ${Math.round(eaten.fat - targets.fat)}g`);
+  else if (eaten.calories > 0 && (eaten.fat * 9) / eaten.calories > 0.35) flags.push("脂肪占比偏高");
+
+  const meals = MEAL_ORDER.flatMap(t => {
+    if (t === mealType) return [{ label: MEAL_LABELS[t], foods: "", calories: current.calories, protein: current.protein }];
+    const m = today.find(r => r.mealType === t);
+    return m ? [{ label: MEAL_LABELS[t], foods: m.foods, calories: m.calories, protein: m.protein }] : [];
+  });
+  return { nextMeal, budget, eaten, remaining, flags, targets, meals };
 }
 
-export interface MealIdea { name: string; kcal: number; why: string }
+export interface MealIdea { name: string; kcal: number; why: string; protein?: number }
 
 /** Offline suggestions, used when the AI is unavailable. */
 const MENU: (MealIdea & { tags: string[] })[] = [
@@ -93,8 +133,8 @@ const MENU: (MealIdea & { tags: string[] })[] = [
 
 export function fallbackIdeas(plan: NextMealPlan): MealIdea[] {
   const want = new Set<string>();
-  if (plan.flags.includes("蛋白质偏低")) want.add("protein");
-  if (plan.flags.includes("脂肪偏高")) want.add("lowfat");
+  if (plan.flags.some(f => f.startsWith("蛋白质"))) want.add("protein");
+  if (plan.flags.some(f => f.startsWith("脂肪"))) want.add("lowfat");
   if (plan.budget < 350) want.add("light");
   return MENU
     .map(m => ({ m, score: -Math.abs(m.kcal - plan.budget) / 50 + m.tags.filter(t => want.has(t)).length * 2 }))

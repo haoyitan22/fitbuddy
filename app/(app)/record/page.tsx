@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { saveMeal, getMeals } from "@/lib/meals";
 import { earnOnce, COIN_RULES } from "@/lib/coins";
 import type { MealType, MealRecord, FoodItem } from "@/lib/meals";
-import { MEAL_LABELS, itemsOf, sumItems } from "@/lib/nutrition";
+import { MEAL_LABELS, itemsOf, sumItems, unitOf, formatCount } from "@/lib/nutrition";
 import MealEditor from "@/components/MealEditor";
 import NextMealCard from "@/components/NextMealCard";
 
@@ -264,7 +264,7 @@ export default function RecordPage() {
 
       {/* 下一餐建议 */}
       {items && items.length > 0 && (
-        <NextMealCard key={mealType} mealType={mealType} totals={sumItems(items)} lastMeal={items.map(i => `${i.name}${Math.round(i.grams)}g`).join("、")} />
+        <NextMealCard key={mealType} mealType={mealType} totals={sumItems(items)} lastMeal={items.map(i => { const u = unitOf(i); return `${i.name}${formatCount(u.count, u.unit).replace(" ", "")}`; }).join("、")} />
       )}
     </div>
   );

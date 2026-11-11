@@ -10,6 +10,7 @@ import type { MealRecord, MealType } from "@/lib/meals";
 import PetAvatar from "@/components/PetAvatar";
 import PetStage from "@/components/PetStage";
 import { CALORIE_GOAL, getPetMood, type PetMood } from "@/lib/pets";
+import { getDailyTargets } from "@/lib/goals";
 import { earnOnce, COIN_RULES, loadStore } from "@/lib/coins";
 
 function getGreeting() {
@@ -54,6 +55,7 @@ export default function HomePage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [meals, setMeals] = useState<MealRecord[]>([]);
   const [totals, setTotals] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 });
+  const [goal, setGoal] = useState(CALORIE_GOAL);
   const [water, setWater] = useState(0);
   const [customInput, setCustomInput] = useState(false);
   const [customVal, setCustomVal] = useState("");
@@ -64,6 +66,7 @@ export default function HomePage() {
     setUser(getUser());
     setMeals(getMeals());
     setTotals(getTodayTotals());
+    setGoal(getDailyTargets().calories);
     setWater(loadWater());
     setMood(getPetMood());
     setEquipped(loadStore().equipped);
@@ -81,7 +84,7 @@ export default function HomePage() {
   }
 
   const WATER_GOAL = 1800;
-  const remaining = Math.max(CALORIE_GOAL - totals.calories, 0);
+  const remaining = Math.max(goal - totals.calories, 0);
   const unrecorded = MEAL_CONFIG.filter(m => !meals.find(r => r.mealType === m.type));
 
   return (
@@ -109,7 +112,7 @@ export default function HomePage() {
       <div style={card}>
         <p style={{ margin: "0 0 12px", fontSize: "13px", fontWeight: 600, color: "#3B1F5E" }}>今日热量</p>
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-          <CalorieRing eaten={totals.calories} goal={CALORIE_GOAL} />
+          <CalorieRing eaten={totals.calories} goal={goal} />
           <div style={{ display: "flex", flexDirection: "column", gap: "10px", flex: 1 }}>
             {[
               { label: "蛋白质", value: `${totals.protein}g`, color: "#C084FC" },

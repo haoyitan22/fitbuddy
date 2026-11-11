@@ -1,5 +1,6 @@
 import type { Pet } from "@/lib/auth";
 import { getTodayTotals } from "@/lib/meals";
+import { getDailyTargets } from "@/lib/goals";
 
 /* ──────────────────────────────────────────────────────────────
    Pet art + pet state rules.
@@ -87,6 +88,7 @@ export function petClips(kind: PetKind | null): PetClips {
 
 /* ── state rules ─────────────────────────────────────────────── */
 
+/** Fallback only; the real goal is personal, see getDailyTargets() in lib/goals. */
 export const CALORIE_GOAL = 1500;
 /** Consecutive check-in days that count as a streak worth celebrating. */
 export const STREAK_CELEBRATE = 3;
@@ -119,7 +121,7 @@ export type PetMood = "idle" | "sport" | "full";
 
 export function getPetMood(): PetMood {
   if (typeof window === "undefined") return "idle";
-  if (getTodayTotals().calories > CALORIE_GOAL) return "full";
+  if (getTodayTotals().calories > getDailyTargets().calories) return "full";
   if (getCheckinDates().includes(todayStr())) return "sport";
   return "idle";
 }
