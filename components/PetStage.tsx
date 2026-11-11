@@ -78,9 +78,9 @@ export default function PetStage({
   useEffect(() => {
     const v = videoRef.current;
     if (!playing || !v) return;
-    const isTransform = playing === "sport" || playing === "full";
-    // Transforms start on the base still, which is also their poster, so show at once.
-    setVisible(isTransform && !fromHeld);
+    // Every clip fades in over the still once it is actually playing, which also hides
+    // clips whose first frame differs a little from the still (e.g. a prop already in shot).
+    setVisible(false);
     v.currentTime = 0;
     v.play().catch(() => { setPlaying(null); setVisible(false); setFromHeld(false); });
   }, [playing]);
