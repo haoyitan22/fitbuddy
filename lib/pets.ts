@@ -30,7 +30,7 @@ export function petStill(kind: PetKind): string {
   return `/pets/${kind}.webp`;
 }
 
-/** Which pets have which clips. Panda, hamster, bear and fox are animated; the cat uses its still for now. */
+/** Which pets have which clips. All five pets are animated. */
 export interface PetClips {
   sport?: string;      // check-in transform: base → sport pose (held at the end)
   sportEnd?: string;   // last frame of `sport`, shown while the pet stays sporty
@@ -52,6 +52,7 @@ const CLIPS: Partial<Record<PetKind, PetClips>> = {
   hamster: animated("hamster"),
   bear: animated("bear"),
   fox: animated("fox"),
+  cat: animated("cat"),
 };
 
 /** Standard clip set for a pet folder that has all four clips. */
