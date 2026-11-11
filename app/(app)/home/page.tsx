@@ -10,6 +10,7 @@ import type { MealRecord, MealType } from "@/lib/meals";
 import PetAvatar from "@/components/PetAvatar";
 import PetStage from "@/components/PetStage";
 import { CALORIE_GOAL, getPetMood, type PetMood } from "@/lib/pets";
+import { earnOnce, COIN_RULES } from "@/lib/coins";
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -69,6 +70,7 @@ export default function HomePage() {
   function addWater(ml: number) {
     const next = water + ml;
     setWater(next); saveWater(next);
+    if (next >= WATER_GOAL) earnOnce("water", COIN_RULES.water, "今日喝水达标");
   }
 
   function handleCustom() {

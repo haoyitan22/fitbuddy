@@ -6,6 +6,7 @@ import type { UserProfile } from "@/lib/auth";
 import PetStage, { type PetClip } from "@/components/PetStage";
 import PetAvatar from "@/components/PetAvatar";
 import { getPetMood, getStreak, STREAK_CELEBRATE, type PetMood } from "@/lib/pets";
+import { loadStore, saveStore, COIN_RULES, COIN_EVENT, START_COINS, type PetStore } from "@/lib/coins";
 
 function getDaysSince(isoDate: string): number {
   const join = new Date(isoDate);
@@ -29,46 +30,39 @@ function getWeekCheckinCount(): number {
   } catch { return 0; }
 }
 
+type ShopKind = "prop" | "hat" | "neck" | "background" | "trophy";
+
 interface ShopItem {
   id: string;
-  emoji: string;
+  img: string;
   name: string;
   desc: string;
   price: number;
+  kind: ShopKind;
   tag?: { label: string; color: string };
 }
 
 const SHOP_ITEMS: ShopItem[] = [
-  { id: "scarf",   emoji: "🧣", name: "小围巾",    desc: "温柔百搭",     price: 0 },
-  { id: "ribbon",  emoji: "🎀", name: "蝴蝶结",    desc: "甜美可爱",     price: 50 },
-  { id: "hat",     emoji: "👒", name: "草帽",      desc: "清新夏日",     price: 100 },
-  { id: "tophat",  emoji: "🎩", name: "礼帽",      desc: "优雅绅士",     price: 200 },
-  { id: "crown",   emoji: "👑", name: "小皇冠",    desc: "减脂达人专属", price: 500, tag: { label: "成就专属", color: "#F59E0B" } },
-  { id: "helmet",  emoji: "🚀", name: "宇航服头盔", desc: "星际探险家",   price: 800, tag: { label: "稀有",   color: "#8B5CF6" } },
+  { id: "dumbbells",   img: "/shop/dumbbells.webp",   name: "元气小哑铃",   desc: "健身第一步，从举起它开始", price: 0,   kind: "prop", tag: { label: "新手礼", color: "#10B981" } },
+  { id: "tumbler",     img: "/shop/tumbler.webp",     name: "星星喝水杯",   desc: "每天喝够水，星星会发光",   price: 80,  kind: "prop" },
+  { id: "headband",    img: "/shop/headband.webp",    name: "汗水小发带",   desc: "认真运动的小家伙专属",     price: 120, kind: "hat" },
+  { id: "bandana",     img: "/shop/bandana.webp",     name: "波点小领巾",   desc: "戴上它，散步都变精神",     price: 160, kind: "neck" },
+  { id: "beanie",      img: "/shop/beanie.webp",      name: "软糯毛线帽",   desc: "冬天也要暖暖地坚持",       price: 200, kind: "hat", tag: { label: "冬季限定", color: "#F472B6" } },
+  { id: "starry-camp", img: "/shop/starry-camp.webp", name: "星空露营地",   desc: "和小伙伴在星空下扎营",     price: 500, kind: "background", tag: { label: "稀有背景", color: "#8B5CF6" } },
+  { id: "trophy",      img: "/shop/trophy.webp",      name: "心愿达成奖杯", desc: "达到目标体重才能获得",     price: 0,   kind: "trophy", tag: { label: "成就专属", color: "#F59E0B" } },
 ];
 
-const PET_STORE_KEY = "fitbuddy_pet_store";
-
-interface PetStore {
-  coins: number;
-  owned: string[];
-  equipped: string | null;
-}
-
-function loadStore(): PetStore {
-  try {
-    return JSON.parse(localStorage.getItem(PET_STORE_KEY) || "null") ?? { coins: 128, owned: [], equipped: null };
-  } catch { return { coins: 128, owned: [], equipped: null }; }
-}
-
-function saveStore(s: PetStore) {
-  localStorage.setItem(PET_STORE_KEY, JSON.stringify(s));
+const WATER_GOAL = 1800;
+function waterReachedToday(): boolean {
+  try { return Number(localStorage.getItem("fitbuddy_water_" + new Date().toISOString().slice(0, 10)) ?? 0) >= WATER_GOAL; }
+  catch { return false; }
 }
 
 export default function PetPage() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [checkinCount, setCheckinCount] = useState(0);
-  const [store, setStore] = useState<PetStore>({ coins: 128, owned: [], equipped: null });
+  const [store, setStore] = useState<PetStore>({ coins: START_COINS, owned: [], equipped: null, background: null });
+  const [waterDone, setWaterDone] = useState(false);
   const [mood, setMood] = useState<PetMood>("idle");
   const [streak, setStreak] = useState(0);
   const [trigger, setTrigger] = useState<{ clip: PetClip; id: number } | null>(null);
@@ -81,6 +75,11 @@ export default function PetPage() {
     setMood(getPetMood());
     setStreak(getStreak());
     setDemo(new URLSearchParams(window.location.search).has("demo"));
+    setWaterDone(waterReachedToday());
+    // Keep the balance in sync when coins are earned while this page is open.
+    const sync = () => setStore(loadStore());
+    window.addEventListener(COIN_EVENT, sync);
+    return () => window.removeEventListener(COIN_EVENT, sync);
   }, []);
 
   // Demo panel: preview each effect without real meals or check-ins.
@@ -95,17 +94,27 @@ export default function PetPage() {
 
   const streaking = streak >= STREAK_CELEBRATE;
 
-  const equippedItem = SHOP_ITEMS.find(i => i.id === store.equipped);
+  const equippedItem = SHOP_ITEMS.find(i => i.id === store.equipped && i.kind !== "background");
+  const bgItem = SHOP_ITEMS.find(i => i.id === store.background && i.kind === "background");
+  const goalReached = !!user && user.weight > 0 && user.targetWeight > 0 && user.weight <= user.targetWeight;
+
+  // Equip / unequip. A background has its own slot, so it can be worn together with one accessory.
+  function toggleEquip(item: ShopItem, base: PetStore): PetStore {
+    if (item.kind === "background") return { ...base, background: base.background === item.id ? null : item.id };
+    return { ...base, equipped: base.equipped === item.id ? null : item.id };
+  }
 
   function handleBuy(item: ShopItem) {
+    let next: PetStore;
     if (store.owned.includes(item.id)) {
-      // Already owned — toggle equip
-      const next = { ...store, equipped: store.equipped === item.id ? null : item.id };
-      setStore(next); saveStore(next);
-      return;
+      next = toggleEquip(item, store);
+    } else {
+      if (item.kind === "trophy" && !goalReached) return;
+      if (item.price > store.coins) return;
+      next = toggleEquip(item, { ...store, coins: store.coins - item.price, owned: [...store.owned, item.id] });
+      // A newly bought item is put on straight away.
+      if (item.kind === "background") next.background = item.id; else next.equipped = item.id;
     }
-    if (item.price > store.coins) return;
-    const next = { ...store, coins: store.coins - item.price, owned: [...store.owned, item.id], equipped: item.id };
     setStore(next); saveStore(next);
   }
 
@@ -128,8 +137,11 @@ export default function PetPage() {
 
         {/* ── 1. Pet card ── */}
         <div style={{ background: "linear-gradient(135deg,#F3E8FF,#FCE7F3)", borderRadius: 20, padding: "28px 20px 20px", marginBottom: 14, boxShadow: "0 4px 20px rgba(192,132,252,.15)", textAlign: "center", position: "relative", overflow: "hidden" }}>
-          {/* Animated emoji area */}
-          <div style={{ minHeight: 250, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, position: "relative", marginBottom: 12 }}>
+          {/* Pet scene: a background theme fills this area when one is equipped */}
+          <div style={{
+            minHeight: 250, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, position: "relative", marginBottom: 12,
+            ...(bgItem ? { backgroundImage: `url(${bgItem.img})`, backgroundSize: "cover", backgroundPosition: "center 60%", borderRadius: 16, padding: "24px 0 16px", margin: "-8px -6px 12px" } : null),
+          }}>
             {/* Floating particles */}
             {mood === "idle" && Array.from({length:5}).map((_,i) => (
               <span key={i} style={{ position:"absolute", fontSize:16, animation:`starFloat ${1.5+i*.4}s ease-in infinite ${i*.3}s`, left:`${15+i*14}%`, top:`${30+i*8}%`, opacity:.8 }}>✨</span>
@@ -138,13 +150,17 @@ export default function PetPage() {
               <span key={i} style={{ position:"absolute", fontSize:18, animation:`heartFloat ${1.4+i*.3}s ease-in infinite ${i*.25}s`, left:`${10+i*13}%`, top:`${20+i*10}%`, opacity:.9 }}>💕</span>
             ))}
 
-            {/* Animated pet: tap it */}
-            <PetStage pet={pet} size={200} mood={mood} trigger={trigger} autoTransform="always" />
-
-            {/* Equipped decoration */}
-            {equippedItem && (
-              <div style={{ fontSize: 40, marginTop: -10 }}>{equippedItem.emoji}</div>
-            )}
+            {/* Animated pet: tap it. The equipped accessory sits beside it. */}
+            <div style={{ position: "relative", ...(bgItem ? { borderRadius: 38, boxShadow: "0 0 0 4px rgba(255,255,255,.85), 0 8px 24px rgba(0,0,0,.25)" } : null) }}>
+              <PetStage pet={pet} size={200} mood={mood} trigger={trigger} autoTransform="always" />
+              {equippedItem && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={equippedItem.img} alt={equippedItem.name} title={equippedItem.name}
+                  className={equippedItem.id === "tumbler" && waterDone ? "shop-glow" : undefined}
+                  style={{ position: "absolute", right: -34, bottom: -6, width: 78, height: 78, borderRadius: 20, objectFit: "cover",
+                    boxShadow: "0 4px 14px rgba(192,132,252,.35)", border: "3px solid #fff", background: "#FDF4FF", pointerEvents: "none" }} />
+              )}
+            </div>
 
             {/* State message */}
             {mood === "full" && (
@@ -183,7 +199,7 @@ export default function PetPage() {
         {/* ── 2. Stats bar ── */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:14 }}>
           {[
-            { icon:"🪙", value: store.coins.toString(), label:"可用于购买装饰" },
+            { icon:"🪙", value: store.coins.toString(), label:"做健康小事赚金币" },
             { icon:"📅", value: `${checkinCount}/7`, label:"本周运动打卡" },
             { icon:"⭐", value:"82分", label:"本周饮食评分" },
           ].map(card => (
@@ -198,12 +214,17 @@ export default function PetPage() {
         {/* ── 3. Current outfit ── */}
         <div style={{ background:"#fff", borderRadius:16, padding:"16px", marginBottom:14, boxShadow:"0 2px 10px rgba(192,132,252,.08)" }}>
           <p style={{ fontSize:15, fontWeight:600, color:"#3B1F5E", margin:"0 0 10px" }}>当前装扮</p>
-          {equippedItem ? (
-            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, fontSize:44 }}>
+          {equippedItem || bgItem ? (
+            <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, flexWrap:"wrap" }}>
               <PetAvatar pet={pet} size={56} />
-              <span style={{ fontSize:20, color:"#9CA3AF" }}>+</span>
-              <span>{equippedItem.emoji}</span>
-              <span style={{ fontSize:13, color:"#C084FC", fontWeight:600 }}>{equippedItem.name}</span>
+              {[equippedItem, bgItem].filter(Boolean).map(it => (
+                <span key={it!.id} style={{ display:"inline-flex", alignItems:"center", gap:6 }}>
+                  <span style={{ fontSize:20, color:"#9CA3AF" }}>+</span>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={it!.img} alt="" style={{ width:48, height:48, borderRadius:12, objectFit:"cover" }} />
+                  <span style={{ fontSize:13, color:"#C084FC", fontWeight:600 }}>{it!.name}</span>
+                </span>
+              ))}
             </div>
           ) : (
             <p style={{ textAlign:"center", fontSize:13, color:"#9CA3AF", margin:0 }}>还没有装饰，快去商店看看吧 👇</p>
@@ -213,23 +234,30 @@ export default function PetPage() {
         {/* ── 4. Shop ── */}
         <div style={{ background:"#fff", borderRadius:16, padding:"16px", marginBottom:8, boxShadow:"0 2px 10px rgba(192,132,252,.08)" }}>
           <p style={{ fontSize:15, fontWeight:600, color:"#3B1F5E", margin:"0 0 2px" }}>装饰商店 🛍️</p>
-          <p style={{ fontSize:12, color:"#9CA3AF", margin:"0 0 14px" }}>用金币给 {user?.petName} 买好看的装饰</p>
+          <p style={{ fontSize:12, color:"#9CA3AF", margin:"0 0 10px" }}>用金币给 {user?.petName} 买好看的装饰</p>
+          <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:14 }}>
+            {[["记录一餐", COIN_RULES.meal], ["运动打卡", COIN_RULES.checkin], ["喝水达标", COIN_RULES.water], ["连续打卡 7 天", COIN_RULES.streak7]].map(([label, n]) => (
+              <span key={label} style={{ fontSize:11, color:"#7C3AED", background:"#F5F3FF", borderRadius:999, padding:"3px 9px" }}>{label} <b>+{n}</b></span>
+            ))}
+          </div>
 
           <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr", gap:12 }}>
             {SHOP_ITEMS.map(item => {
               const owned = store.owned.includes(item.id);
-              const equipped = store.equipped === item.id;
+              const equipped = item.kind === "background" ? store.background === item.id : store.equipped === item.id;
               const canAfford = store.coins >= item.price;
               const isFree = item.price === 0;
+              const locked = item.kind === "trophy" && !goalReached && !owned;
 
-              let btnText = isFree ? "免费领取" : "购买装扮";
+              let btnText = item.kind === "trophy" ? "领取奖杯" : isFree ? "免费领取" : "购买装扮";
               let btnBg = "linear-gradient(135deg,#C084FC,#F9A8D4)";
               let btnColor = "#fff";
               let btnDisabled = false;
 
               if (equipped) { btnText = "已装扮 ✓"; btnBg = "#D1FAE5"; btnColor = "#059669"; btnDisabled = false; }
               else if (owned) { btnText = "点击装扮"; btnBg = "#EDE9FE"; btnColor = "#7C3AED"; }
-              else if (!canAfford && !isFree) { btnText = "金币不足"; btnBg = "#F3F4F6"; btnColor = "#9CA3AF"; btnDisabled = true; }
+              else if (locked) { btnText = "达成目标体重解锁"; btnBg = "#F3F4F6"; btnColor = "#9CA3AF"; btnDisabled = true; }
+              else if (!canAfford && !isFree) { btnText = `还差 ${item.price - store.coins} 金币`; btnBg = "#F3F4F6"; btnColor = "#9CA3AF"; btnDisabled = true; }
 
               return (
                 <div key={item.id} style={{
@@ -243,11 +271,14 @@ export default function PetPage() {
                       {item.tag.label}
                     </span>
                   )}
-                  <div style={{ fontSize:52, marginBottom:6 }}>{item.emoji}</div>
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={item.img} alt={item.name} loading="lazy"
+                    style={{ width:"100%", aspectRatio:"1", objectFit:"cover", borderRadius:10, marginBottom:8, display:"block",
+                      filter: locked ? "grayscale(.6) opacity(.7)" : "none" }} />
                   <p style={{ fontSize:13, fontWeight:700, color:"#3B1F5E", margin:"0 0 2px" }}>{item.name}</p>
                   <p style={{ fontSize:11, color:"#9CA3AF", margin:"0 0 8px" }}>{item.desc}</p>
                   <p style={{ fontSize:12, color:"#C084FC", fontWeight:600, margin:"0 0 8px" }}>
-                    {isFree ? "免费" : `🪙 ${item.price}`}
+                    {item.kind === "trophy" ? "成就奖励" : isFree ? "免费" : `🪙 ${item.price}`}
                   </p>
                   <button
                     disabled={btnDisabled}

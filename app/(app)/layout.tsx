@@ -1,5 +1,6 @@
 import BottomNav from "@/components/BottomNav";
 import AuthGuard from "@/components/AuthGuard";
+import CoinToast from "@/components/CoinToast";
 
 export default function AppLayout({
   children,
@@ -21,6 +22,7 @@ export default function AppLayout({
       >
         <main style={{ flex: 1, paddingBottom: "72px" }}>{children}</main>
         <BottomNav />
+        <CoinToast />
       </div>
     </AuthGuard>
   );

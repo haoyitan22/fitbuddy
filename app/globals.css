@@ -32,3 +32,13 @@ body {
 @keyframes pet-breathe { 0%,100% { transform: scale(1,1); } 50% { transform: scale(1.012,1.022); } }
 @keyframes pet-squish  { 0% { transform: scale(1,1); } 30% { transform: scale(1.08,.9); } 60% { transform: scale(.96,1.05); } 100% { transform: scale(1,1); } }
 @media (prefers-reduced-motion: reduce) { .pet-breathe, .pet-squish { animation: none; } }
+
+/* Shop: the water tumbler glows once today's water goal is reached */
+.shop-glow { animation: shop-glow 2.4s ease-in-out infinite; }
+@keyframes shop-glow {
+  0%,100% { box-shadow: 0 0 0 3px #fff, 0 0 14px 4px rgba(250,204,21,.55); }
+  50%     { box-shadow: 0 0 0 3px #fff, 0 0 24px 10px rgba(250,204,21,.85); }
+}
+@media (prefers-reduced-motion: reduce) { .shop-glow { animation: none; box-shadow: 0 0 0 3px #fff, 0 0 18px 6px rgba(250,204,21,.7); } }
+.coin-toast { animation: coin-toast-in .25s ease-out; }
+@keyframes coin-toast-in { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }

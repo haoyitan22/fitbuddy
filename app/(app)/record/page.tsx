@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { saveMeal, getMeals } from "@/lib/meals";
+import { earnOnce, COIN_RULES } from "@/lib/coins";
 import type { MealType, MealRecord } from "@/lib/meals";
 
 const MEAL_LABELS: Record<MealType, string> = {
@@ -111,6 +112,7 @@ export default function RecordPage() {
       foods: result.foods, calories: result.calories,
       protein: result.protein, carbs: result.carbs, fat: result.fat,
     });
+    earnOnce(`meal:${mealType}`, COIN_RULES.meal, `记录${MEAL_LABELS[mealType]}`);
     setSaved(true);
     setTimeout(() => router.push("/home"), 1200);
   }

@@ -5,6 +5,7 @@ import { getUserData } from "@/lib/auth";
 import type { Pet } from "@/lib/auth";
 import PetStage from "@/components/PetStage";
 import { getStreak, STREAK_CELEBRATE } from "@/lib/pets";
+import { earnOnce, COIN_RULES } from "@/lib/coins";
 
 type BodyPart = "full" | "abs" | "legs" | "arms";
 
@@ -116,6 +117,8 @@ export default function WorkoutPage() {
       // A streak gets the bigger celebration; a normal check-in gets the sport transform.
       const s = getStreak();
       setStreakDays(s);
+      earnOnce("checkin", COIN_RULES.checkin, "运动打卡");
+      if (s > 0 && s % 7 === 0) earnOnce("streak7", COIN_RULES.streak7, `连续打卡 ${s} 天奖励`);
       setOverlayClip(s >= STREAK_CELEBRATE ? "celebrate" : "sport");
       setCelebrating(true);
       setTimeout(() => setCelebrating(false), 5000);
