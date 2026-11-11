@@ -65,6 +65,22 @@ function animated(kind: PetKind): PetClips {
   };
 }
 
+/**
+ * "Wearing" clips: the pet puts on / picks up a shop item, starting from its base still
+ * and ending dressed. Keyed by shop item id. Only the panda has them so far.
+ */
+export interface PetWear { clip: string; end: string }
+const WEAR: Partial<Record<PetKind, Record<string, PetWear>>> = {
+  panda: Object.fromEntries(["dumbbells", "tumbler", "headband", "bandana"].map(id => [id, {
+    clip: `/pets/panda/wear-${id}.mp4`, end: `/pets/panda/wear-${id}-end.webp`,
+  }])),
+};
+
+export function petWear(kind: PetKind | null, itemId?: string | null): PetWear | null {
+  if (!kind || !itemId) return null;
+  return WEAR[kind]?.[itemId] ?? null;
+}
+
 export function petClips(kind: PetKind | null): PetClips {
   return (kind && CLIPS[kind]) || {};
 }

@@ -10,7 +10,7 @@ import type { MealRecord, MealType } from "@/lib/meals";
 import PetAvatar from "@/components/PetAvatar";
 import PetStage from "@/components/PetStage";
 import { CALORIE_GOAL, getPetMood, type PetMood } from "@/lib/pets";
-import { earnOnce, COIN_RULES } from "@/lib/coins";
+import { earnOnce, COIN_RULES, loadStore } from "@/lib/coins";
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -58,6 +58,7 @@ export default function HomePage() {
   const [customInput, setCustomInput] = useState(false);
   const [customVal, setCustomVal] = useState("");
   const [mood, setMood] = useState<PetMood>("idle");
+  const [equipped, setEquipped] = useState<string | null>(null);
 
   useEffect(() => {
     setUser(getUser());
@@ -65,6 +66,7 @@ export default function HomePage() {
     setTotals(getTodayTotals());
     setWater(loadWater());
     setMood(getPetMood());
+    setEquipped(loadStore().equipped);
   }, []);
 
   function addWater(ml: number) {
@@ -213,7 +215,7 @@ export default function HomePage() {
       {user?.pet && (
         <Link href="/pet" style={{ textDecoration: "none" }}>
           <div style={{ ...card, background: "linear-gradient(135deg,#FFF0F6 0%,#FDF4FF 100%)", border: "1px solid rgba(249,168,212,0.3)", display: "flex", alignItems: "center", gap: "14px", cursor: "pointer" }}>
-            <PetStage pet={user.pet} size={76} mood={mood} interactive={false} />
+            <PetStage pet={user.pet} size={76} mood={mood} interactive={false} wear={equipped} />
             <div style={{ flex: 1 }}>
               <p style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: 700, color: "#3B1F5E" }}>{user.petName}</p>
               <p style={{ margin: 0, fontSize: "12px", color: "#9CA3AF", lineHeight: "1.5" }}>

@@ -3,11 +3,14 @@
 import { useEffect, useRef, useState } from "react";
 import type { Pet } from "@/lib/auth";
 import {
-  petKindOf, petStill, petClips, PET_BG,
+  petKindOf, petStill, petClips, petWear, PET_BG,
   hasPlayedToday, markPlayedToday, type PetMood,
 } from "@/lib/pets";
 
-export type PetClip = "sport" | "full" | "tap" | "celebrate";
+export type PetClip = "sport" | "full" | "tap" | "celebrate" | "wear";
+
+/** Clips that start on the base still and end in a pose the pet then rests in. */
+const TRANSFORMS: PetClip[] = ["sport", "full", "wear"];
 
 /**
  * Animated pet.
@@ -19,6 +22,8 @@ export type PetClip = "sport" | "full" | "tap" | "celebrate";
  *   "always" = every time the component mounts (the pet page).
  * - `trigger`: play a clip now (bump `id` to replay). Used for the check-in overlay
  *   and the demo buttons.
+ * - `wear`: the equipped shop item. If this pet has a clip for it, the pet "puts it on"
+ *   (a transform like sport/full) and then rests dressed. Mood transforms take priority.
  * - Tapping plays the tap clip when the pet is in its base pose; otherwise (or for
  *   pets without clips yet) it gives a small squish so a tap always gets a reaction.
  *
@@ -26,8 +31,9 @@ export type PetClip = "sport" | "full" | "tap" | "celebrate";
  * no clip plays and the pet shows the still for its mood.
  */
 export default function PetStage({
-  pet, size = 220, mood = "idle", autoTransform = true, trigger, interactive = true, onClipEnd, round = false,
+  pet, size = 220, mood = "idle", autoTransform = true, trigger, interactive = true, onClipEnd, round = false, wear,
 }: {
+  wear?: string | null;
   pet?: Partial<Pet> | string | null;
   size?: number;
   mood?: PetMood;
@@ -40,9 +46,11 @@ export default function PetStage({
   const kind = petKindOf(pet);
   const clips = petClips(kind);
   const base = kind ? petStill(kind) : null;
+  const worn = mood === "idle" ? petWear(kind, wear) : null;
+  const clipSrc = (c: PetClip) => (c === "wear" ? worn?.clip : clips[c]);
 
   const restStill =
-    (mood === "sport" && clips.sportEnd) || (mood === "full" && clips.fullEnd) || base;
+    (mood === "sport" && clips.sportEnd) || (mood === "full" && clips.fullEnd) || worn?.end || base;
 
   const [playing, setPlaying] = useState<PetClip | null>(null);
   const [visible, setVisible] = useState(false);
@@ -56,20 +64,22 @@ export default function PetStage({
     try { setReduced(window.matchMedia("(prefers-reduced-motion: reduce)").matches); } catch { /* ignore */ }
   }, []);
 
-  // Transform for today's mood, once a day.
+  // Transform for today's mood (or putting on the equipped item), on mount or once a day.
   useEffect(() => {
     if (!autoTransform || reduced) return;
-    if (mood === "idle") return;
-    if (!clips[mood]) return;
-    if (autoTransform !== "always" && hasPlayedToday(mood)) return;
-    markPlayedToday(mood);
-    setPlaying(mood);
-  }, [mood, autoTransform, reduced, kind]); // eslint-disable-line react-hooks/exhaustive-deps
+    const target: PetClip | null = mood !== "idle" ? mood : worn ? "wear" : null;
+    if (!target || !clipSrc(target)) return;
+    const key = target === "wear" ? `wear:${wear}` : target;
+    if (autoTransform !== "always" && hasPlayedToday(key)) return;
+    markPlayedToday(key);
+    setFromHeld(false);
+    setPlaying(target);
+  }, [mood, autoTransform, reduced, kind, wear]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // External trigger.
   useEffect(() => {
     if (!trigger) return;
-    if (reduced || !clips[trigger.clip]) { setSquish(n => n + 1); return; }
+    if (reduced || !clipSrc(trigger.clip)) { setSquish(n => n + 1); return; }
     if (trigger.clip === "sport" || trigger.clip === "full" || trigger.clip === "celebrate") markPlayedToday(trigger.clip);
     setPlaying(trigger.clip);
   }, [trigger?.id]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -88,7 +98,7 @@ export default function PetStage({
   function handleEnded() {
     const done = playing;
     setFromHeld(false);
-    if (done === "sport" || done === "full") {
+    if (done && TRANSFORMS.includes(done)) {
       // The resting still is this clip's last frame, so swap without a fade.
       setPlaying(null);
       setVisible(false);
@@ -102,7 +112,8 @@ export default function PetStage({
 
   function handleTap() {
     if (!interactive || playing) return;
-    if (!reduced && clips.tap && mood === "idle") setPlaying("tap");
+    if (!reduced && worn) { setFromHeld(true); setPlaying("wear"); }
+    else if (!reduced && clips.tap && mood === "idle") setPlaying("tap");
     else if (!reduced && mood !== "idle" && clips[mood]) { setFromHeld(true); setPlaying(mood); }
     else setSquish(n => n + 1);
   }
@@ -114,8 +125,8 @@ export default function PetStage({
 
   // While a transform plays, the layer underneath is its starting pose,
   // except on a tap-replay, where the held end pose stays put until the clip fades in.
-  const underStill = (playing === "sport" || playing === "full") && !fromHeld ? base : restStill!;
-  const src = playing ? clips[playing] : undefined;
+  const underStill = playing && TRANSFORMS.includes(playing) && !fromHeld ? base : restStill!;
+  const src = playing ? clipSrc(playing) : undefined;
 
   return (
     <div

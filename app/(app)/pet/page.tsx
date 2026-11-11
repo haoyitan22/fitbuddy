@@ -5,7 +5,7 @@ import { getUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import PetStage, { type PetClip } from "@/components/PetStage";
 import PetAvatar from "@/components/PetAvatar";
-import { getPetMood, getStreak, STREAK_CELEBRATE, type PetMood } from "@/lib/pets";
+import { getPetMood, getStreak, STREAK_CELEBRATE, petKindOf, petWear, type PetMood } from "@/lib/pets";
 import { loadStore, saveStore, COIN_RULES, COIN_EVENT, START_COINS, type PetStore } from "@/lib/coins";
 
 function getDaysSince(isoDate: string): number {
@@ -152,8 +152,8 @@ export default function PetPage() {
 
             {/* Animated pet: tap it. The equipped accessory sits beside it. */}
             <div style={{ position: "relative", ...(bgItem ? { borderRadius: 38, boxShadow: "0 0 0 4px rgba(255,255,255,.85), 0 8px 24px rgba(0,0,0,.25)" } : null) }}>
-              <PetStage pet={pet} size={200} mood={mood} trigger={trigger} autoTransform="always" />
-              {equippedItem && (
+              <PetStage pet={pet} size={200} mood={mood} trigger={trigger} autoTransform="always" wear={store.equipped} />
+              {equippedItem && !(mood === "idle" && petWear(petKindOf(pet), equippedItem.id)) && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={equippedItem.img} alt={equippedItem.name} title={equippedItem.name}
                   className={equippedItem.id === "tumbler" && waterDone ? "shop-glow" : undefined}
