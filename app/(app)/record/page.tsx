@@ -4,21 +4,10 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { saveMeal, getMeals } from "@/lib/meals";
 import { earnOnce, COIN_RULES } from "@/lib/coins";
-import type { MealType, MealRecord } from "@/lib/meals";
-
-const MEAL_LABELS: Record<MealType, string> = {
-  breakfast: "早餐",
-  lunch:     "午餐",
-  dinner:    "晚餐",
-};
-
-interface AnalysisResult {
-  foods: string;
-  calories: number;
-  protein: number;
-  carbs: number;
-  fat: number;
-}
+import type { MealType, MealRecord, FoodItem } from "@/lib/meals";
+import { MEAL_LABELS, itemsOf, sumItems } from "@/lib/nutrition";
+import MealEditor from "@/components/MealEditor";
+import NextMealCard from "@/components/NextMealCard";
 
 export default function RecordPage() {
   const router = useRouter();
@@ -29,10 +18,13 @@ export default function RecordPage() {
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string>("image/jpeg");
   const [analyzing, setAnalyzing] = useState(false);
-  const [result, setResult] = useState<AnalysisResult | null>(null);
+  // The meal's foods, editable (fresh analysis or a saved record).
+  const [items, setItems] = useState<FoodItem[] | null>(null);
+  // JSON of the saved items, to tell whether the user changed a saved record.
+  const [savedSig, setSavedSig] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [saved, setSaved] = useState(false);
-  // Today's saved record for the selected meal, shown read-only until the user retakes it.
+  // Today's saved record for the selected meal, shown (and editable) until the user retakes it.
   const [viewing, setViewing] = useState<MealRecord | null>(null);
 
   function savedRecord(t: MealType) {
@@ -44,18 +36,26 @@ export default function RecordPage() {
     const m = new URLSearchParams(window.location.search).get("meal");
     const t: MealType = m === "lunch" || m === "dinner" || m === "breakfast" ? m : "breakfast";
     setMealType(t);
-    setViewing(savedRecord(t));
+    openRecord(savedRecord(t));
   }, []);
+
+  function openRecord(r: MealRecord | null) {
+    setViewing(r);
+    const its = r ? itemsOf(r) : null;
+    setItems(its);
+    setSavedSig(its ? JSON.stringify(its) : null);
+  }
 
   function selectMeal(t: MealType) {
     setMealType(t);
     reset();
     setSaved(false);
-    setViewing(savedRecord(t));
+    openRecord(savedRecord(t));
   }
 
   function retake() {
     setViewing(null);
+    setSavedSig(null);
     reset();
     fileRef.current?.click();
   }
@@ -63,7 +63,7 @@ export default function RecordPage() {
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
-    setResult(null); setError(""); setSaved(false);
+    setItems(null); setError(""); setSaved(false);
     const reader = new FileReader();
     reader.onload = ev => {
       const dataUrl = ev.target?.result as string;
@@ -87,7 +87,7 @@ export default function RecordPage() {
 
   async function handleAnalyze() {
     if (!imageBase64) return;
-    setAnalyzing(true); setError(""); setResult(null);
+    setAnalyzing(true); setError(""); setItems(null);
     try {
       const res = await fetch("/api/analyze-food", {
         method: "POST",
@@ -96,7 +96,7 @@ export default function RecordPage() {
       });
       const data = await res.json();
       if (!res.ok || data.error) { setError(data.error || `服务器错误 (${res.status})`); return; }
-      setResult(data as AnalysisResult);
+      setItems(itemsOf(data));
     } catch {
       setError("请求失败，请检查网络后重试");
     } finally {
@@ -104,22 +104,39 @@ export default function RecordPage() {
     }
   }
 
-  function handleSave() {
-    if (!result) return;
-    saveMeal({
-      mealType,
-      imageBase64: imagePreview ?? undefined,
-      foods: result.foods, calories: result.calories,
-      protein: result.protein, carbs: result.carbs, fat: result.fat,
+  function persist(its: FoodItem[], image?: string) {
+    const t = sumItems(its);
+    const record = saveMeal({
+      mealType, imageBase64: image, items: its,
+      foods: its.map(i => i.name).join("、"),
+      calories: t.calories, protein: t.protein, carbs: t.carbs, fat: t.fat,
     });
-    earnOnce(`meal:${mealType}`, COIN_RULES.meal, `记录${MEAL_LABELS[mealType]}`);
+    setViewing(record);
+    setSavedSig(JSON.stringify(its));
     setSaved(true);
-    setTimeout(() => router.push("/home"), 1200);
+    window.setTimeout(() => setSaved(false), 2200);
+  }
+
+  // A fresh analysis: save it, earn coins, then stay on the record so the
+  // next-meal suggestion stays on screen.
+  function handleSave() {
+    if (!items?.length) return;
+    persist(items, imagePreview ?? undefined);
+    earnOnce(`meal:${mealType}`, COIN_RULES.meal, `记录${MEAL_LABELS[mealType]}`);
+    setImagePreview(null); setImageBase64(null);
+  }
+
+  // Edits to a saved record.
+  function handleUpdate() {
+    if (!items?.length || !viewing) return;
+    persist(items, viewing.imageBase64);
   }
 
   function reset() {
-    setResult(null); setImagePreview(null); setImageBase64(null); setError("");
+    setItems(null); setImagePreview(null); setImageBase64(null); setError("");
   }
+
+  const dirty = !!viewing && !!items && savedSig !== null && JSON.stringify(items) !== savedSig;
 
   const btn: React.CSSProperties = {
     width: "100%", padding: "15px", borderRadius: "14px",
@@ -153,51 +170,40 @@ export default function RecordPage() {
         </div>
       </div>
 
-      {/* 已记录：查看这餐的分析结果 */}
-      {viewing && (
+      {/* 已记录：查看 / 修改这餐 */}
+      {viewing && items && (
         <div style={{ background: "#fff", borderRadius: "16px", overflow: "hidden", boxShadow: "0 2px 16px rgba(192,132,252,0.12)" }}>
           {viewing.imageBase64 && (
             <img src={viewing.imageBase64} alt="food" style={{ width: "100%", maxHeight: "280px", objectFit: "cover", display: "block" }} />
           )}
           <div style={{ padding: "20px" }}>
-            <p style={{ margin: "0 0 14px", fontSize: "14px", fontWeight: 700, color: "#3B1F5E" }}>🍽 {viewing.foods}</p>
-            <div style={{ textAlign: "center", padding: "16px 0", borderBottom: "1px solid #F9F5FF" }}>
-              <span style={{ fontSize: "42px", fontWeight: 800, color: "#C084FC" }}>{viewing.calories}</span>
-              <span style={{ fontSize: "16px", color: "#9CA3AF", marginLeft: "4px" }}>kcal</span>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-around", paddingTop: "16px" }}>
-              {[
-                { label: "蛋白质", value: viewing.protein, color: "#C084FC" },
-                { label: "碳水",   value: viewing.carbs,   color: "#F9A8D4" },
-                { label: "脂肪",   value: viewing.fat,     color: "#FCD34D" },
-              ].map(n => (
-                <div key={n.label} style={{ textAlign: "center" }}>
-                  <p style={{ margin: 0, fontSize: "22px", fontWeight: 700, color: n.color }}>{n.value}g</p>
-                  <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#9CA3AF" }}>{n.label}</p>
-                </div>
-              ))}
-            </div>
-            <p style={{ margin: "16px 0 0", fontSize: "12px", color: "#C4B5D0", textAlign: "center" }}>
-              今天的{MEAL_LABELS[mealType]}已记录
+            <p style={{ margin: "0 0 10px", fontSize: "13px", color: "#9CA3AF", fontWeight: 600 }}>
+              今天的{MEAL_LABELS[mealType]} {saved ? <span style={{ color: "#10B981" }}>· 已保存 ✓</span> : "· 已记录"}
             </p>
+            <MealEditor items={items} onChange={setItems} />
+            {dirty && (
+              <button onClick={handleUpdate} disabled={!items.length} style={{ ...btn, marginTop: "16px", background: "#C084FC", color: "#fff", boxShadow: "0 4px 16px rgba(192,132,252,0.35)" }}>
+                保存修改 ✓
+              </button>
+            )}
             <button onClick={retake} style={{ ...btn, marginTop: "12px", background: "#F9F5FF", color: "#9CA3AF" }}>
               重新拍照，替换这条记录
             </button>
-            <button onClick={() => router.push("/home")} style={{ ...btn, marginTop: "8px", background: "#C084FC", color: "#fff" }}>
-              返回首页
+            <button onClick={() => router.push("/home")} style={{ ...btn, marginTop: "8px", background: dirty ? "#F3F4F6" : "#C084FC", color: dirty ? "#9CA3AF" : "#fff" }}>
+              {dirty ? "不保存，返回首页" : "返回首页"}
             </button>
           </div>
         </div>
       )}
 
       {/* 拍照区域 */}
-      {!viewing && <div onClick={() => !saved && fileRef.current?.click()} style={{
+      {!viewing && <div onClick={() => fileRef.current?.click()} style={{
         background: imagePreview ? "transparent" : "#fff",
         borderRadius: "16px",
         border: imagePreview ? "none" : "2px dashed #F3E8FF",
         minHeight: "200px", display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
-        cursor: saved ? "default" : "pointer", overflow: "hidden",
+        cursor: "pointer", overflow: "hidden",
         boxShadow: "0 2px 12px rgba(192,132,252,0.08)",
       }}>
         {imagePreview ? (
@@ -214,12 +220,12 @@ export default function RecordPage() {
         onChange={handleFileChange} style={{ display: "none" }} />
 
       {/* 重新选择 */}
-      {imagePreview && !result && !saved && (
+      {imagePreview && !items && (
         <button onClick={reset} style={{ ...btn, background: "#F9F5FF", color: "#9CA3AF" }}>重新选择图片</button>
       )}
 
       {/* 分析按钮 */}
-      {imagePreview && !result && !saved && (
+      {imagePreview && !items && (
         <button onClick={handleAnalyze} disabled={analyzing} style={{
           ...btn,
           background: analyzing ? "#E9D5FF" : "#C084FC", color: "#fff",
@@ -243,30 +249,11 @@ export default function RecordPage() {
         </div>
       )}
 
-      {/* 分析结果 */}
-      {result && !saved && (
+      {/* 分析结果：可修正 */}
+      {items && !viewing && (
         <div style={{ background: "#fff", borderRadius: "16px", padding: "20px", boxShadow: "0 2px 16px rgba(192,132,252,0.12)" }}>
-          <p style={{ margin: "0 0 14px", fontSize: "14px", fontWeight: 700, color: "#3B1F5E" }}>🍽 {result.foods}</p>
-
-          <div style={{ textAlign: "center", padding: "16px 0", borderBottom: "1px solid #F9F5FF" }}>
-            <span style={{ fontSize: "42px", fontWeight: 800, color: "#C084FC" }}>{result.calories}</span>
-            <span style={{ fontSize: "16px", color: "#9CA3AF", marginLeft: "4px" }}>kcal</span>
-          </div>
-
-          <div style={{ display: "flex", justifyContent: "space-around", paddingTop: "16px" }}>
-            {[
-              { label: "蛋白质", value: result.protein, color: "#C084FC" },
-              { label: "碳水",   value: result.carbs,   color: "#F9A8D4" },
-              { label: "脂肪",   value: result.fat,     color: "#FCD34D" },
-            ].map(n => (
-              <div key={n.label} style={{ textAlign: "center" }}>
-                <p style={{ margin: 0, fontSize: "22px", fontWeight: 700, color: n.color }}>{n.value}g</p>
-                <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#9CA3AF" }}>{n.label}</p>
-              </div>
-            ))}
-          </div>
-
-          <button onClick={handleSave} style={{ ...btn, marginTop: "20px", background: "#C084FC", color: "#fff", boxShadow: "0 4px 16px rgba(192,132,252,0.35)" }}>
+          <MealEditor items={items} onChange={setItems} />
+          <button onClick={handleSave} disabled={!items.length} style={{ ...btn, marginTop: "20px", background: items.length ? "#C084FC" : "#E9D5FF", color: "#fff", boxShadow: "0 4px 16px rgba(192,132,252,0.35)" }}>
             保存到{MEAL_LABELS[mealType]}记录 ✓
           </button>
           <button onClick={reset} style={{ ...btn, marginTop: "8px", background: "#F9F5FF", color: "#9CA3AF" }}>
@@ -275,12 +262,9 @@ export default function RecordPage() {
         </div>
       )}
 
-      {saved && (
-        <div style={{ background: "rgba(192,132,252,0.1)", borderRadius: "16px", padding: "28px", textAlign: "center" }}>
-          <div style={{ fontSize: "48px", marginBottom: "8px" }}>✅</div>
-          <p style={{ margin: 0, fontSize: "16px", fontWeight: 700, color: "#3B1F5E" }}>{MEAL_LABELS[mealType]}记录成功！</p>
-          <p style={{ margin: "6px 0 0", fontSize: "13px", color: "#9CA3AF" }}>正在返回首页...</p>
-        </div>
+      {/* 下一餐建议 */}
+      {items && items.length > 0 && (
+        <NextMealCard key={mealType} mealType={mealType} totals={sumItems(items)} lastMeal={items.map(i => `${i.name}${Math.round(i.grams)}g`).join("、")} />
       )}
     </div>
   );

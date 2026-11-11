@@ -1,5 +1,15 @@
 export type MealType = "breakfast" | "lunch" | "dinner";
 
+/** One food in a meal, with the portion it was estimated for. */
+export interface FoodItem {
+  name: string;
+  grams: number;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
 export interface MealRecord {
   id: string;
   mealType: MealType;
@@ -10,6 +20,8 @@ export interface MealRecord {
   protein: number;
   carbs: number;
   fat: number;
+  /** Per-food breakdown (records saved before this existed have none). */
+  items?: FoodItem[];
   createdAt: string;
 }
 
