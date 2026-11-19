@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { getUserData } from "@/lib/auth";
+import { shareActivity } from "@/lib/team";
 import type { Pet } from "@/lib/auth";
 import PetStage from "@/components/PetStage";
 import { getStreak, STREAK_CELEBRATE } from "@/lib/pets";
@@ -118,6 +119,8 @@ export default function WorkoutPage() {
       const s = getStreak();
       setStreakDays(s);
       earnOnce("checkin", COIN_RULES.checkin, "运动打卡");
+      const u = getUserData();
+      shareActivity(u, "checkin", `${u?.petName ?? "宠物"}的主人完成了运动打卡 💪`, s > 1 ? `已连续打卡 ${s} 天` : "今日运动已打卡", getCheckedInDates());
       if (s > 0 && s % 7 === 0) earnOnce("streak7", COIN_RULES.streak7, `连续打卡 ${s} 天奖励`);
       setOverlayClip(s >= STREAK_CELEBRATE ? "celebrate" : "sport");
       setCelebrating(true);

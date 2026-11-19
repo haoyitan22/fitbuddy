@@ -7,6 +7,8 @@ import { earnOnce, COIN_RULES } from "@/lib/coins";
 import type { MealType, MealRecord, FoodItem } from "@/lib/meals";
 import { MEAL_LABELS, itemsOf, sumItems, unitOf, formatCount } from "@/lib/nutrition";
 import MealEditor from "@/components/MealEditor";
+import { getUser } from "@/lib/auth";
+import { shareActivity } from "@/lib/team";
 import NextMealCard from "@/components/NextMealCard";
 
 export default function RecordPage() {
@@ -123,6 +125,8 @@ export default function RecordPage() {
     if (!items?.length) return;
     persist(items, imagePreview ?? undefined);
     earnOnce(`meal:${mealType}`, COIN_RULES.meal, `记录${MEAL_LABELS[mealType]}`);
+    const u = getUser(), t = sumItems(items);
+    shareActivity(u, "meal", `${u?.petName ?? "宠物"}的主人记录了${MEAL_LABELS[mealType]} 🍱`, `${items.map(i => i.name).join("、")} · ${t.calories} kcal`);
     setImagePreview(null); setImageBase64(null);
   }
 

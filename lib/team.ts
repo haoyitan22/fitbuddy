@@ -107,3 +107,70 @@ export function checkinsThisWeek(dates: string[]): number {
   }
   return n;
 }
+
+/* ── shared teams (server) ─────────────────────────────────────
+   Each browser gets a random member id plus a secret. The id is
+   what teammates see; the secret proves later changes are ours. */
+
+const MEMBER_KEY = "fitbuddy_member";
+
+function randHex(bytes: number) {
+  const a = new Uint8Array(bytes);
+  crypto.getRandomValues(a);
+  return Array.from(a, b => b.toString(16).padStart(2, "0")).join("");
+}
+
+export function myMemberId(): { id: string; secret: string } {
+  try {
+    const m = JSON.parse(localStorage.getItem(MEMBER_KEY) || "null");
+    if (m?.id && m?.secret) return m;
+  } catch { /* new one below */ }
+  const m = { id: randHex(12), secret: randHex(16) };
+  try { localStorage.setItem(MEMBER_KEY, JSON.stringify(m)); } catch { /* ignore */ }
+  return m;
+}
+
+export interface RemoteMember { id: string; name: string; pet: string; petName: string; joinedAt: string; checkins: string[] }
+export interface RemoteEvent { by: string; type: "meal" | "checkin" | "join"; text: string; detail: string; at: string }
+export interface RemoteTeam {
+  team: { code: string; name: string; goal: string; createdAt: string; leaderId: string };
+  members: RemoteMember[];
+  feed: RemoteEvent[];
+}
+
+/** status 503 = no database connected (stay local); 0 = network error. */
+export type TeamResult<T> = { ok: true; data: T } | { ok: false; status: number; error: string };
+
+async function call<T>(init: { method: "GET"; code: string } | { method: "POST"; body: Record<string, unknown> }): Promise<TeamResult<T>> {
+  try {
+    const res = init.method === "GET"
+      ? await fetch(`/api/team?code=${encodeURIComponent(init.code)}`, { cache: "no-store" })
+      : await fetch("/api/team", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(init.body) });
+    const json = await res.json().catch(() => ({}));
+    return res.ok ? { ok: true, data: json as T } : { ok: false, status: res.status, error: json.error || "组队服务暂时不可用" };
+  } catch {
+    return { ok: false, status: 0, error: "网络不太好，稍后再试" };
+  }
+}
+
+function me(user: UserProfile | null) {
+  return { ...myMemberId(), name: user?.nickname ?? "", pet: user?.pet?.emoji ?? "🐾", petName: user?.petName ?? "" };
+}
+
+export function fetchTeam(code: string) {
+  return call<RemoteTeam>({ method: "GET", code });
+}
+
+export function teamAction<T = RemoteTeam>(action: "create" | "join" | "leave" | "sync" | "activity", code: string, user: UserProfile | null, extra: Record<string, unknown> = {}) {
+  return call<T>({ method: "POST", body: { action, code, member: me(user), ...extra } });
+}
+
+/**
+ * Tell the team about something the user just did (a meal, a check-in).
+ * Fire-and-forget: does nothing without a team or a database.
+ */
+export function shareActivity(user: UserProfile | null, type: "meal" | "checkin", text: string, detail: string, checkins?: string[]) {
+  const t = loadTeam();
+  if (!t || !user) return;
+  void teamAction("activity", t.code, user, { type, text, detail, ...(checkins ? { checkins } : {}) });
+}
