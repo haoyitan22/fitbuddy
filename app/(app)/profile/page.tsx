@@ -77,7 +77,8 @@ export default function ProfilePage() {
   const [coins, setCoins] = useState(128);
   const [avatarColor, setAvatarColor] = useState("#C084FC");
   const [avatarPhoto, setAvatarPhoto] = useState("");
-  const [modal, setModal] = useState<ModalContent | null>(null);
+  type ModalKey = "nick" | "avatar" | "target" | "bodyStats" | "diet" | "password" | "about";
+  const [modal, setModal] = useState<ModalKey | null>(null);
 
   // form states
   const [nickInput, setNickInput] = useState("");
@@ -135,20 +136,20 @@ export default function ProfilePage() {
   function closeModal() { setModal(null); setPwMsg(""); }
 
   /* ── modal openers ── */
-  function openNick() {
-    setModal({
+  function nickModal(): ModalContent {
+    return {
       title:"修改昵称",
       body:(
         <div>
           <input value={nickInput} onChange={e=>setNickInput(e.target.value)} style={inputStyle} placeholder="新昵称" />
-          <Btn onClick={()=>{ updateUser({nickname:nickInput}); closeModal(); }}>确认</Btn>
+          <Btn onClick={()=>{ const n = nickInput.trim().slice(0, 20); if (n) updateUser({nickname:n}); closeModal(); }}>确认</Btn>
         </div>
       )
-    });
+    };
   }
 
-  function openAvatar() {
-    setModal({
+  function avatarModal(): ModalContent {
+    return {
       title:"修改头像",
       body:(
         <AvatarEditor
@@ -159,11 +160,11 @@ export default function ProfilePage() {
           onColor={(c)=>{ saveAvatarColor(c); closeModal(); }}
         />
       )
-    });
+    };
   }
 
-  function openTarget() {
-    setModal({
+  function targetModal(): ModalContent {
+    return {
       title:"修改目标体重",
       body:(
         <div>
@@ -171,11 +172,11 @@ export default function ProfilePage() {
           <Btn onClick={()=>{ updateUser({targetWeight:parseFloat(targetInput)||user!.targetWeight}); closeModal(); }}>确认</Btn>
         </div>
       )
-    });
+    };
   }
 
-  function openBodyStats() {
-    setModal({
+  function bodyStatsModal(): ModalContent {
+    return {
       title:"修改身高体重",
       body:(
         <div>
@@ -184,35 +185,34 @@ export default function ProfilePage() {
           <Btn onClick={()=>{ const h=parseFloat(heightInput)||user!.height, w=parseFloat(weightInput); updateUser({height:h}); if (w && w!==user!.weight) saveWeighIn(w); closeModal(); }}>确认</Btn>
         </div>
       )
-    });
+    };
   }
 
   const DIET_OPTIONS = [
     {id:"none",label:"🥩 无特殊限制"},{id:"veg",label:"🥬 素食"},
     {id:"nospicy",label:"🚫 不吃辣"},{id:"lowcarb",label:"🌾 低碳水"},{id:"hiprotein",label:"💪 高蛋白"},
   ];
-  function openDiet() {
+  function dietModal(): ModalContent {
     let tmp = [...dietPrefs];
-    setModal({
+    return {
       title:"饮食偏好",
       body:(
         <DietSelector options={DIET_OPTIONS} initial={tmp} onSave={sel=>{ setDietPrefs(sel); localStorage.setItem("fitbuddy_diet_prefs",JSON.stringify(sel)); closeModal(); }} />
       )
-    });
+    };
   }
 
-  function openPassword() {
-    setPwCur(""); setPwNew(""); setPwConf(""); setPwMsg("");
-    setModal({
+  function passwordModal(): ModalContent {
+    return {
       title:"修改密码",
       body:(
         <PwForm user={user} onDone={(msg)=>{ setPwMsg(msg); if(!msg.includes("失败")) { updateUser({}); setTimeout(closeModal,1200); } }} />
       )
-    });
+    };
   }
 
-  function openAbout() {
-    setModal({
+  function aboutModal(): ModalContent {
+    return {
       title:"关于轻食伴侣",
       body:<div style={{textAlign:"center",color:"#9CA3AF",fontSize:14,padding:"8px 0"}}>
         <div style={{fontSize:40,marginBottom:8}}>🌿</div>
@@ -220,8 +220,20 @@ export default function ProfilePage() {
         <p style={{margin:"0 0 4px"}}>版本 v1.0.0</p>
         <p style={{margin:0}}>陪你记录饮食、运动打卡<br/>和可爱宠物一起走向健康 🐾</p>
       </div>
-    });
+    };
   }
+
+  // Dialog content is rebuilt on every render from the current form state.
+  // (Storing ready-made JSX when a dialog opened froze its inputs: typing did nothing.)
+  const MODALS = { nick: nickModal, avatar: avatarModal, target: targetModal, bodyStats: bodyStatsModal, diet: dietModal, password: passwordModal, about: aboutModal };
+  const activeModal = modal ? MODALS[modal]() : null;
+  const openNick = () => { setNickInput(user?.nickname ?? ""); setModal("nick"); };
+  const openAvatar = () => setModal("avatar");
+  const openTarget = () => { setTargetInput(user?.targetWeight ? String(user.targetWeight) : ""); setModal("target"); };
+  const openBodyStats = () => { setHeightInput(user?.height ? String(user.height) : ""); setWeightInput(user?.weight ? String(user.weight) : ""); setModal("bodyStats"); };
+  const openDiet = () => setModal("diet");
+  const openPassword = () => { setPwCur(""); setPwNew(""); setPwConf(""); setPwMsg(""); setModal("password"); };
+  const openAbout = () => setModal("about");
 
   const currentW = user?.weight ?? 0;
   const targetW  = user?.targetWeight ?? 0;
@@ -240,14 +252,14 @@ export default function ProfilePage() {
     <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#FDF4FF,#FFF0F6)",paddingBottom:88}}>
 
       {/* Modal */}
-      {modal && (
+      {activeModal && (
         <div style={{position:"fixed",inset:0,zIndex:1000}}>
           <div onClick={closeModal} style={{position:"absolute",inset:0,background:"rgba(0,0,0,.4)"}} />
           <div style={{position:"absolute",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:430,background:"#fff",borderRadius:"20px 20px 0 0",padding:"24px 20px 40px"}}>
             <div style={{width:40,height:4,background:"#E5E7EB",borderRadius:4,margin:"0 auto 20px"}} />
-            <h3 style={{fontSize:17,fontWeight:700,color:"#3B1F5E",margin:"0 0 18px",textAlign:"center"}}>{modal.title}</h3>
+            <h3 style={{fontSize:17,fontWeight:700,color:"#3B1F5E",margin:"0 0 18px",textAlign:"center"}}>{activeModal.title}</h3>
             {pwMsg && <p style={{textAlign:"center",fontSize:13,color:pwMsg.includes("成功")?"#10B981":"#EF4444",margin:"0 0 10px"}}>{pwMsg}</p>}
-            {modal.body}
+            {activeModal.body}
           </div>
         </div>
       )}
