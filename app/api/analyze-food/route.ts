@@ -6,8 +6,9 @@ import { redis } from "@/lib/redis";
 
 export const maxDuration = 30;
 
-/** Photos: the stronger vision model, falling back to the fast one if it fails. Text tasks: fast model. */
+/** Photos and meal ideas: the mid-tier model, falling back to the fast one if it fails. Simple estimates: fast model. */
 const MODEL_VISION = "claude-sonnet-5-5";
+const MODEL_IDEAS = "claude-sonnet-5-5";
 const MODEL_FAST = "claude-haiku-4-5-20251001";
 /** Bump to drop cached photo results after changing the prompt or the food table. */
 const CACHE_VERSION = "v1";
@@ -62,9 +63,12 @@ function parseJson(text: string): Record<string, unknown> | null {
   try { return JSON.parse(m[0]); } catch { return null; }
 }
 
-/** temperature 0: the same input gives the same answer as far as the model allows. */
-async function ask(client: Anthropic, content: Anthropic.MessageParam["content"], maxTokens = 1024, model = MODEL_FAST) {
-  const run = (m: string) => client.messages.create({ model: m, max_tokens: maxTokens, temperature: 0, messages: [{ role: "user", content }] });
+/**
+ * Recognition uses temperature 0 (the same input gives the same answer as far as the
+ * model allows). Meal ideas pass a higher one so suggestions don't repeat.
+ */
+async function ask(client: Anthropic, content: Anthropic.MessageParam["content"], maxTokens = 1024, model = MODEL_FAST, temperature = 0) {
+  const run = (m: string) => client.messages.create({ model: m, max_tokens: maxTokens, temperature, messages: [{ role: "user", content }] });
   let response;
   try {
     response = await run(model);
@@ -91,7 +95,7 @@ const sumOf = (items: Item[], k: "calories" | "protein" | "carbs" | "fat") => Ma
  * POST /api/analyze-food
  *   { imageBase64, mimeType }                    → { items, foods, calories, protein, carbs, fat, cached? }
  *   { mode: "estimate", items: [{name, count, unit}] } → { items }   (nutrition for hand-added foods)
- *   { mode: "suggest", targets, eaten, meals, exclude?, … } → { budget, analysis, ideas: [{name, kcal, protein, why}], tip }
+ *   { mode: "suggest", targets, eaten, meals, exclude?, recent?, … } → { budget, analysis, ideas: [{name, kcal, protein, why, estimated}], tip }
  */
 export async function POST(req: NextRequest) {
   try {
@@ -133,6 +137,8 @@ ${TABLE_RULES}`);
       const prefs = (Array.isArray(c.prefs) ? c.prefs : []).map(String).slice(0, 5).join("、");
       // Dishes already shown that the user skipped ("换一批").
       const exclude = (Array.isArray(c.exclude) ? c.exclude : []).map((x: unknown) => String(x).slice(0, 30)).slice(-12);
+      // Ideas shown for earlier meals in the last few days, so suggestions don't repeat day to day.
+      const recent = (Array.isArray(c.recent) ? c.recent : []).map((x: unknown) => String(x).slice(0, 30)).slice(-20);
       const who = [
         p.gender === "male" ? "男" : p.gender === "female" ? "女" : "",
         num(p.age) ? `${num(p.age)}岁` : "",
@@ -151,18 +157,31 @@ ${meals || "- 暂无"}
 
 要求：
 1. 先定下一餐的热量预算 budget：优先补足蛋白质缺口；如果今天已经超标，不要让用户不吃，给一份低热量但能吃饱的方案（不低于 250 kcal）；如果下一餐是明天，按正常一餐安排。
-2. 给 3 个不同的中国菜搭配（家常菜、食堂或外卖都能买到），每个写清分量，只用“一碗、一份、一个、半碗、半条、一把”这样的生活单位，任何地方都不要出现克数。每个搭配的热量接近 budget。3 个搭配的主食和做法要互不相同（比如一个米饭、一个面、一个粥或杂粮）。
-${exclude.length ? `用户已经看过并且不想吃这些：${exclude.join("；")}。这次换成完全不同的菜（换主要食材和做法，不要只换配菜）。\n` : ""}蛋白质吃到或超过目标是好事，不要当成问题；需要控制的是热量和脂肪。
+2. 给 3 个不同的中国菜搭配（家常菜、食堂或外卖都能买到）。每个搭配由 2–4 样组成，每样必须从下面的参考表里选（ref 填表里的名字），count 用表里的单位计数（可以是 0.5 的倍数）；系统会按参考表算热量和蛋白质，所以你不用自己算。name 里写清分量，只用“一碗、一份、一个、半碗”这样的生活单位，不要出现克数。
+   3 个搭配的主食和做法要互不相同（比如一个米饭、一个面、一个粥或杂粮），蛋白质来源也要不同（比如一个鱼虾、一个鸡肉或牛肉、一个蛋或豆制品）。
+${exclude.length ? `   用户刚看过并且不想吃这些：${exclude.join("；")}。这次换成完全不同的菜（换主要食材和做法，不要只换配菜）。\n` : ""}${recent.length ? `   最近几天已经推荐过：${recent.join("；")}。尽量不要重复这些菜。\n` : ""}   蛋白质吃到或超过目标是好事，不要当成问题；需要控制的是热量和脂肪。
 3. 根据今天吃过的东西避开重复，按偏好调整，结合已摄入的脂肪和蛋白质情况说明理由。
 4. analysis：一句话点评今天到目前的摄入（具体到数字，25 字以内，语气友好，不要用“严重”这类吓人的词）。
 
 只返回如下 JSON，不要任何额外文字：
-{ "budget": 整数, "analysis": "…", "ideas": [ { "name": "菜名 + 分量（20字以内）", "kcal": 整数, "protein": 整数克, "why": "一句话理由（20字以内）" } ], "tip": "一句温柔的鼓励（20字以内）" }`, 800);
+{ "budget": 整数, "analysis": "…", "ideas": [ { "name": "菜名 + 分量（20字以内）", "parts": [ { "ref": "参考表里的名字", "count": 数量 } ], "why": "一句话理由（20字以内）" } ], "tip": "一句温柔的鼓励（20字以内）" }
+
+参考表（名字(单位)）：${foodListForPrompt()}`, 1200, MODEL_IDEAS, 0.8);
       const ideas = Array.isArray(data?.ideas)
-        ? (data!.ideas as { name?: unknown; kcal?: unknown; protein?: unknown; why?: unknown }[])
+        ? (data!.ideas as { name?: unknown; parts?: unknown; kcal?: unknown; protein?: unknown; why?: unknown }[])
             .filter(i => typeof i?.name === "string")
             .slice(0, 3)
-            .map(i => ({ name: String(i.name).slice(0, 28), kcal: Math.round(num(i.kcal)), protein: Math.round(num(i.protein)), why: String(i.why ?? "").slice(0, 40) }))
+            .map(i => {
+              // Calories and protein come from the reference table, not from the model.
+              const parts = (Array.isArray(i.parts) ? i.parts : []) as { ref?: unknown; count?: unknown }[];
+              const refs = parts.map(pt => ({ f: typeof pt?.ref === "string" ? findFood(pt.ref) : null, count: num(pt?.count) || 1 }));
+              const allKnown = refs.length > 0 && refs.every(r => r.f);
+              const n = allKnown
+                ? refs.reduce((acc, r) => { const v = nutritionOf(r.f!, r.count * r.f!.unitGrams); return { kcal: acc.kcal + v.calories, protein: acc.protein + v.protein }; }, { kcal: 0, protein: 0 })
+                : { kcal: num(i.kcal), protein: num(i.protein) };
+              return { name: String(i.name).slice(0, 28), kcal: Math.round(n.kcal), protein: Math.round(n.protein), why: String(i.why ?? "").slice(0, 40), estimated: !allKnown };
+            })
+            .filter(i => i.kcal > 0)
         : [];
       if (!ideas.length) return NextResponse.json({ error: "建议生成失败" }, { status: 500 });
       const budget = Math.round(num(data?.budget));

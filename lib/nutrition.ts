@@ -116,7 +116,7 @@ export function planNextMeal(mealType: MealType, current: Totals): NextMealPlan 
   return { nextMeal, budget, eaten, remaining, flags, targets, meals };
 }
 
-export interface MealIdea { name: string; kcal: number; why: string; protein?: number }
+export interface MealIdea { name: string; kcal: number; why: string; protein?: number; /** AI-estimated: some part is not in the reference table */ estimated?: boolean }
 
 /** Offline suggestions, used when the AI is unavailable. */
 const MENU: (MealIdea & { tags: string[] })[] = [

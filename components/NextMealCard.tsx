@@ -9,6 +9,26 @@ import { dayKey } from "@/lib/date";
 
 const ink = "#3B1F5E", grey = "#9CA3AF", purple = "#C084FC";
 const CACHE_KEY = "fitbuddy_next_meal";
+/** Ideas shown in the last few days, sent along so the AI doesn't keep suggesting the same dishes. */
+const HISTORY_KEY = "fitbuddy_idea_history";
+const HISTORY_DAYS = 3;
+
+function recentIdeas(): string[] {
+  try {
+    const h = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]") as { name: string; date: string }[];
+    const from = new Date(); from.setDate(from.getDate() - (HISTORY_DAYS - 1));
+    const start = dayKey(from);
+    return h.filter(x => x.date >= start).map(x => x.name).slice(-20);
+  } catch { return []; }
+}
+
+function rememberIdeas(names: string[]) {
+  try {
+    const h = JSON.parse(localStorage.getItem(HISTORY_KEY) || "[]") as { name: string; date: string }[];
+    const d = dayKey();
+    localStorage.setItem(HISTORY_KEY, JSON.stringify([...h, ...names.map(name => ({ name, date: d }))].slice(-40)));
+  } catch { /* ignore */ }
+}
 
 type Cached = { sig: string; ideas: MealIdea[]; budget: number | null; analysis: string; tip: string; ai: boolean; seen?: string[] };
 
@@ -49,11 +69,13 @@ export default function NextMealCard({ mealType, totals, lastMeal }: { mealType:
           meals: plan.meals.map(m => (m.foods ? m : { ...m, foods: lastMeal })),
           nextMeal: plan.nextMeal, budget: plan.budget,
           exclude: seen,
+          recent: recentIdeas(),
         }),
       });
       const json = await res.json();
       if (!res.ok || !json.ideas?.length) throw new Error();
       next = { sig, ideas: json.ideas, budget: json.budget ?? null, analysis: json.analysis || "", tip: json.tip || "", ai: true, seen };
+      rememberIdeas((json.ideas as MealIdea[]).map(i => i.name));
     } catch {
       next = { sig, ideas: fallbackIdeas(plan, seen), budget: null, analysis: "", tip: "", ai: false, seen };
     }
@@ -138,6 +160,7 @@ export default function NextMealCard({ mealType, totals, lastMeal }: { mealType:
             <div style={{ textAlign: "right", flexShrink: 0 }}>
               <p style={{ margin: 0, fontSize: 12, fontWeight: 700, color: purple, whiteSpace: "nowrap" }}>{idea.kcal} kcal</p>
               {!!idea.protein && <p style={{ margin: "2px 0 0", fontSize: 11, color: "#A78BFA", whiteSpace: "nowrap" }}>蛋白 {idea.protein}g</p>}
+              {idea.estimated && <p title="有食物不在营养参考表里，数值是 AI 估算的" style={{ margin: "3px 0 0", fontSize: 10, color: "#B45309", fontWeight: 600 }}>估算</p>}
             </div>
           </div>
         ))}
