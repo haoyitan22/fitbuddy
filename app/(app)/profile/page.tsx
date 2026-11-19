@@ -320,15 +320,9 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* ── Daily calorie target: how it is worked out ── */}
+        {/* ── Daily calorie target (worked out in lib/goals; only the result is shown) ── */}
         {(() => {
           const t = targetsFor(user), p = t.plan;
-          const row = (label: React.ReactNode, val: React.ReactNode, sub?: React.ReactNode) => (
-            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,padding:"8px 0",borderBottom:"1px solid #F9F5FF"}}>
-              <div><p style={{margin:0,fontSize:13,color:"#3B1F5E"}}>{label}</p>{sub && <p style={{margin:"2px 0 0",fontSize:11,color:"#9CA3AF",lineHeight:1.4}}>{sub}</p>}</div>
-              <span style={{fontSize:13,fontWeight:700,color:"#3B1F5E",whiteSpace:"nowrap"}}>{val}</span>
-            </div>
-          );
           return (
             <div id="goal" className="ph-no-capture" style={{background:"#fff",borderRadius:16,padding:"16px",marginBottom:14,boxShadow:"0 2px 10px rgba(192,132,252,.08)",scrollMarginTop:16}}>
               <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
@@ -338,26 +332,20 @@ export default function ProfilePage() {
               {!p ? (
                 <p style={{fontSize:12,color:"#9CA3AF",margin:"8px 0 0",lineHeight:1.6}}>资料不完整，暂时用默认值。在下面「修改身高体重」里补全身高、体重，就会按你的身体情况计算。</p>
               ) : (
-                <div style={{marginTop:8}}>
-                  {row("基础代谢", `${p.bmr} kcal`, "躺着不动一天也会消耗的热量，按身高、体重、年龄、性别计算")}
-                  {row(<>× 活动系数 {p.activityFactor}</>, `${p.tdee} kcal`, `${ACTIVITY_LABELS[user?.activityLevel ?? ""] ?? "轻度运动"}，算出你每天大约消耗的总热量`)}
-                  {p.goal !== "maintain" && row(
-                    p.goal === "lose" ? "− 减脂缺口" : "+ 增重盈余",
-                    `${Math.abs(p.adjust)} kcal`,
-                    p.monthsNeeded ? `约每周${p.goal === "lose" ? "减" : "增"} ${Math.abs(p.weeklyKg)}kg，预计 ${p.monthsNeeded} 个月到 ${user?.targetWeight}kg` : null,
-                  )}
-                  {row(<b>= 每日目标</b>, <span style={{color:"#C084FC"}}>{t.calories} kcal</span>, `蛋白质 ${t.protein}g · 脂肪不超过 ${t.fat}g`)}
-                  {p.capped && p.goal === "lose" && (
-                    <p style={{fontSize:12,color:"#B45309",background:"#FEF3C7",borderRadius:10,padding:"8px 10px",margin:"10px 0 0",lineHeight:1.5}}>
-                      {user?.goalMonths} 个月减 {((user?.weight ?? 0) - (user?.targetWeight ?? 0)).toFixed(1)}kg 有点快，已按安全速度计算（每天最多少吃消耗量的 1/4）。
+                <div style={{marginTop:6}}>
+                  <p style={{fontSize:13,color:"#3B1F5E",margin:0}}>蛋白质 {t.protein}g · 脂肪不超过 {t.fat}g</p>
+                  {p.goal !== "maintain" && p.monthsNeeded && (
+                    <p style={{fontSize:12,color:"#9CA3AF",margin:"6px 0 0",lineHeight:1.5}}>
+                      按这个目标，约每周{p.goal === "lose" ? "减" : "增"} {Math.abs(p.weeklyKg)}kg，预计 {p.monthsNeeded} 个月到 {user?.targetWeight}kg
                     </p>
                   )}
-                  {p.floored && (
+                  {(p.floored || (p.capped && p.goal === "lose")) && (
                     <p style={{fontSize:12,color:"#B45309",background:"#FEF3C7",borderRadius:10,padding:"8px 10px",margin:"10px 0 0",lineHeight:1.5}}>
-                      已到安全下限 {user?.gender === "male" ? 1500 : 1200} kcal，不建议再少吃。想更快一些，可以增加运动量。
+                      {p.floored
+                        ? "已经是安全的最低摄入量，不建议再少吃。想快一点，可以多运动。"
+                        : `原计划 ${user?.goalMonths} 个月有点快，已按健康的速度安排。`}
                     </p>
                   )}
-                  <p style={{fontSize:11,color:"#C4B5D0",margin:"10px 0 0",lineHeight:1.5}}>按 Mifflin-St Jeor 公式估算，仅供参考；改了体重、身高或目标后会自动重算。</p>
                 </div>
               )}
             </div>
