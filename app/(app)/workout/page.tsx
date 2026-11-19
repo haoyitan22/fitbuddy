@@ -8,6 +8,7 @@ import PetStage from "@/components/PetStage";
 import { getStreak, STREAK_CELEBRATE } from "@/lib/pets";
 import { earnOnce, COIN_RULES } from "@/lib/coins";
 import { dayKey } from "@/lib/date";
+import { track } from "@/lib/analytics";
 
 type BodyPart = "full" | "abs" | "legs" | "arms";
 
@@ -120,6 +121,7 @@ export default function WorkoutPage() {
       const s = getStreak();
       setStreakDays(s);
       earnOnce("checkin", COIN_RULES.checkin, "运动打卡");
+      track("workout_checkin", { streak: s });
       const u = getUserData();
       shareActivity(u, "checkin", `${u?.petName ?? "宠物"}的主人完成了运动打卡 💪`, s > 1 ? `已连续打卡 ${s} 天` : "今日运动已打卡", getCheckedInDates());
       if (s > 0 && s % 7 === 0) earnOnce("streak7", COIN_RULES.streak7, `连续打卡 ${s} 天奖励`);

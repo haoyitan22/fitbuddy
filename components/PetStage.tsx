@@ -6,6 +6,7 @@ import {
   petKindOf, petStill, petClips, petWear, PET_BG,
   hasPlayedToday, markPlayedToday, type PetMood,
 } from "@/lib/pets";
+import { track } from "@/lib/analytics";
 
 export type PetClip = "sport" | "full" | "tap" | "celebrate" | "wear";
 
@@ -139,6 +140,7 @@ export default function PetStage({
 
   function handleTap() {
     if (!interactive || playing) return;
+    track("pet_tapped", { pet: kind ?? "other", mood });
     if (!reduced) {
       if (mood === "full" && clips.full) { playSequence(["full"], restStill); return; }
       if (dressed) { playSequence(["wear"], restStill); return; }

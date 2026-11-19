@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { getUserData, createSession } from "@/lib/auth";
+import { track } from "@/lib/analytics";
 
 const inputStyle: React.CSSProperties = {
   width: "100%",
@@ -39,6 +40,7 @@ export default function LoginPage() {
       return;
     }
     createSession(email);
+    track("login");
     router.push("/home");
   }
 

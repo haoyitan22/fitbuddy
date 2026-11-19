@@ -6,6 +6,7 @@ import { getUser } from "@/lib/auth";
 import { ageOf, getDietPrefs } from "@/lib/goals";
 import { fallbackIdeas, planNextMeal, type MealIdea, type Totals } from "@/lib/nutrition";
 import { dayKey } from "@/lib/date";
+import { track } from "@/lib/analytics";
 
 const ink = "#3B1F5E", grey = "#9CA3AF", purple = "#C084FC";
 const CACHE_KEY = "fitbuddy_next_meal";
@@ -75,7 +76,7 @@ export default function NextMealCard({ mealType, totals, lastMeal }: { mealType:
   ];
 
   return (
-    <div style={{ background: "#fff", borderRadius: 16, padding: 18, boxShadow: "0 2px 16px rgba(192,132,252,0.12)" }}>
+    <div className="ph-no-capture" style={{ background: "#fff", borderRadius: 16, padding: 18, boxShadow: "0 2px 16px rgba(192,132,252,0.12)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
         <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: ink }}>🥗 {plan.nextMeal}吃什么</p>
         <p style={{ margin: 0, fontSize: 13, color: purple, fontWeight: 700, whiteSpace: "nowrap" }}>建议 ≈ {budget} kcal</p>
@@ -118,7 +119,7 @@ export default function NextMealCard({ mealType, totals, lastMeal }: { mealType:
       <div style={{ marginTop: 14, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: ink }}>推荐吃这些</p>
         {data && !stale && (
-          <button onClick={() => load(true, true)} disabled={loading} aria-label="换一批推荐"
+          <button onClick={() => { track("next_meal_refreshed"); load(true, true); }} disabled={loading} aria-label="换一批推荐"
             style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 12px", borderRadius: 999, border: "1.5px solid #E9D5FF", background: "#fff", color: purple, fontSize: 12, fontWeight: 600, cursor: loading ? "default" : "pointer" }}>
             <span style={{ display: "inline-block", animation: loading ? "nm-spin 0.8s linear infinite" : undefined }}>↻</span>
             {loading ? "换菜中..." : "换一批"}

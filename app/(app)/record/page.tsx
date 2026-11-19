@@ -10,6 +10,7 @@ import MealEditor from "@/components/MealEditor";
 import { getUser } from "@/lib/auth";
 import { shareActivity } from "@/lib/team";
 import NextMealCard from "@/components/NextMealCard";
+import { track } from "@/lib/analytics";
 
 export default function RecordPage() {
   const router = useRouter();
@@ -102,10 +103,12 @@ export default function RecordPage() {
         body: JSON.stringify({ imageBase64, mimeType }),
       });
       const data = await res.json();
-      if (!res.ok || data.error) { setError(data.error || `服务器错误 (${res.status})`); return; }
+      if (!res.ok || data.error) { setError(data.error || `服务器错误 (${res.status})`); track("meal_photo_failed", { status: res.status }); return; }
       setItems(itemsOf(data));
+      track("meal_photo_analyzed", { meal_type: mealType, item_count: data.items?.length ?? 0 });
     } catch {
       setError("请求失败，请检查网络后重试");
+      track("meal_photo_failed", { status: 0 });
     } finally {
       setAnalyzing(false);
     }
@@ -130,6 +133,7 @@ export default function RecordPage() {
     if (!items?.length) return;
     persist(items, imagePreview ?? undefined);
     earnOnce(`meal:${mealType}`, COIN_RULES.meal, `记录${MEAL_LABELS[mealType]}`);
+    track("meal_saved", { meal_type: mealType, item_count: items.length });
     const u = getUser(), t = sumItems(items);
     shareActivity(u, "meal", `${u?.petName ?? "宠物"}的主人记录了${MEAL_LABELS[mealType]} 🍱`, `${items.map(i => i.name).join("、")} · ${t.calories} kcal`);
     setImagePreview(null); setImageBase64(null);
@@ -139,6 +143,7 @@ export default function RecordPage() {
   function handleUpdate() {
     if (!items?.length || !viewing) return;
     persist(items, viewing.imageBase64);
+    track("meal_updated", { meal_type: mealType, item_count: items.length });
   }
 
   function reset() {

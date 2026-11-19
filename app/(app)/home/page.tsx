@@ -13,6 +13,7 @@ import { CALORIE_GOAL, getPetMood, type PetMood } from "@/lib/pets";
 import { getDailyTargets } from "@/lib/goals";
 import { earnOnce, COIN_RULES, loadStore } from "@/lib/coins";
 import { dayKey } from "@/lib/date";
+import { track } from "@/lib/analytics";
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -76,6 +77,7 @@ export default function HomePage() {
   function addWater(ml: number) {
     const next = water + ml;
     setWater(next); saveWater(next);
+    track("water_logged", { ml, reached_goal: next >= WATER_GOAL });
     if (next >= WATER_GOAL) earnOnce("water", COIN_RULES.water, "今日喝水达标");
   }
 

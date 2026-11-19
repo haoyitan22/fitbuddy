@@ -3,6 +3,7 @@
 import { useState } from "react";
 import type { FoodItem } from "@/lib/meals";
 import { scaleItem, sumItems, unitOf, stepOf, formatCount, setCount, UNITS } from "@/lib/nutrition";
+import { track } from "@/lib/analytics";
 
 const ink = "#3B1F5E", grey = "#9CA3AF", purple = "#C084FC";
 
@@ -50,6 +51,7 @@ export default function MealEditor({ items, onChange }: { items: FoodItem[]; onC
     if (manual) {
       const k = Math.max(0, Math.round(Number(kcal) || 0));
       onChange([...items, { name: n, unit, count: c, grams: 100 * c, calories: k, protein: 0, carbs: 0, fat: 0 }]);
+      track("meal_item_added", { method: "manual" });
       resetAdd();
       return;
     }
@@ -63,6 +65,7 @@ export default function MealEditor({ items, onChange }: { items: FoodItem[]; onC
       const it: FoodItem | undefined = data.items?.[0];
       if (!res.ok || !it) throw new Error();
       onChange([...items, { ...it, name: n, unit, count: c }]);
+      track("meal_item_added", { method: "ai" });
       resetAdd();
     } catch {
       setManual(true);
@@ -81,7 +84,7 @@ export default function MealEditor({ items, onChange }: { items: FoodItem[]; onC
   };
 
   return (
-    <div>
+    <div className="ph-no-capture">
       {/* totals */}
       <div style={{ textAlign: "center", padding: "6px 0 16px", borderBottom: "1px solid #F9F5FF" }}>
         <span style={{ fontSize: 42, fontWeight: 800, color: purple }}>{totals.calories}</span>
@@ -127,7 +130,7 @@ export default function MealEditor({ items, onChange }: { items: FoodItem[]; onC
                   {formatCount(u.count, u.unit)}
                 </span>
                 <button aria-label={`${it.name} 增加`} style={stepBtn} onClick={() => stepAt(i, 1)}>+</button>
-                <button aria-label={`删除 ${it.name}`} onClick={() => onChange(items.filter((_, j) => j !== i))}
+                <button aria-label={`删除 ${it.name}`} onClick={() => { onChange(items.filter((_, j) => j !== i)); track("meal_item_removed"); }}
                   style={{ ...stepBtn, background: "transparent", color: "#D1D5DB", fontSize: 18 }}>×</button>
               </div>
               {gramsOpen === i && (

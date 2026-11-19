@@ -5,6 +5,8 @@ import { useRouter } from "next/navigation";
 import { getTempData, saveUserData, createSession, clearTempData } from "@/lib/auth";
 import type { UserProfile, Pet } from "@/lib/auth";
 import PetAvatar from "@/components/PetAvatar";
+import { track } from "@/lib/analytics";
+import { petKindOf } from "@/lib/pets";
 
 const confettiColors = ["#C084FC","#F9A8D4","#FCD34D","#86EFAC","#93C5FD","#FB923C"];
 
@@ -88,6 +90,7 @@ export default function NamingPage() {
     saveUserData(profile);
     createSession(profile.email);
     clearTempData();
+    track("signup_completed", { pet: petKindOf(pet) ?? "other" });
     setCelebrating(true);
   }
 

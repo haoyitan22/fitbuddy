@@ -11,6 +11,7 @@ import {
   Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
 import { dayKey } from "@/lib/date";
+import { track, resetAnalytics } from "@/lib/analytics";
 
 /* ── helpers ── */
 function daysSince(iso?: string) {
@@ -112,6 +113,7 @@ export default function ProfilePage() {
   function saveWeighIn(kg: number) {
     if (!(kg >= 25 && kg <= 300)) return;
     const all = logWeight(kg);
+    track("weight_logged", { days_logged: all.length });
     setAllWeighIns(all); setWeighIns(recentWeighIns());
     setUser(getUser()); setWeightInput(String(Math.round(kg * 10) / 10));
     setTodayKg(""); setEditingToday(false);
@@ -273,7 +275,7 @@ export default function ProfilePage() {
             <p style={{fontSize:13,color:"#9CA3AF",margin:"0 0 24px"}}>退出后需要重新登录</p>
             <div style={{display:"flex",gap:12}}>
               <button onClick={()=>setShowConfirmLogout(false)} style={{flex:1,padding:"10px 0",borderRadius:10,border:"1px solid #E5E7EB",background:"#fff",color:"#6B7280",fontSize:14,cursor:"pointer"}}>取消</button>
-              <button onClick={()=>{ logout(); router.replace("/"); }} style={{flex:1,padding:"10px 0",borderRadius:10,border:"none",background:"#EF4444",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer"}}>退出</button>
+              <button onClick={()=>{ resetAnalytics(); logout(); router.replace("/"); }} style={{flex:1,padding:"10px 0",borderRadius:10,border:"none",background:"#EF4444",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer"}}>退出</button>
             </div>
           </div>
         </div>
@@ -299,7 +301,7 @@ export default function ProfilePage() {
               <div style={{fontSize:12,color:"#C084FC",fontWeight:600}}>🪙 {coins}</div>
             </div>
           </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
+          <div className="ph-no-capture" style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
             {[
               {label:"当前体重",val: user?.weight ? `${user.weight}kg`:"--"},
               {label:"目标体重",val: user?.targetWeight ? `${user.targetWeight}kg`:"--"},
@@ -314,7 +316,7 @@ export default function ProfilePage() {
         </div>
 
         {/* ── 2. Charts ── */}
-        <div style={{background:"#fff",borderRadius:16,padding:"16px",marginBottom:14,boxShadow:"0 2px 10px rgba(192,132,252,.08)"}}>
+        <div className="ph-no-capture" style={{background:"#fff",borderRadius:16,padding:"16px",marginBottom:14,boxShadow:"0 2px 10px rgba(192,132,252,.08)"}}>
           <p style={{fontSize:15,fontWeight:600,color:"#3B1F5E",margin:"0 0 14px"}}>本周概览 📊</p>
 
           {/* Weight: only days the user weighed in */}

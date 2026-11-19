@@ -8,6 +8,7 @@ import PetAvatar from "@/components/PetAvatar";
 import { getPetMood, getStreak, STREAK_CELEBRATE, petKindOf, petWear, type PetMood } from "@/lib/pets";
 import { loadStore, saveStore, COIN_RULES, COIN_EVENT, START_COINS, type PetStore } from "@/lib/coins";
 import { dayKey } from "@/lib/date";
+import { track } from "@/lib/analytics";
 
 function getDaysSince(isoDate: string): number {
   const join = new Date(isoDate);
@@ -112,12 +113,14 @@ export default function PetPage() {
     let next: PetStore;
     if (store.owned.includes(item.id)) {
       next = toggleEquip(item, store);
+      track("shop_item_equipped", { item: item.id, on: (item.kind === "background" ? next.background : next.equipped) === item.id });
     } else {
       if (item.kind === "trophy" && !goalReached) return;
       if (item.price > store.coins) return;
       next = toggleEquip(item, { ...store, coins: store.coins - item.price, owned: [...store.owned, item.id] });
       // A newly bought item is put on straight away.
       if (item.kind === "background") next.background = item.id; else next.equipped = item.id;
+      track("shop_item_bought", { item: item.id, price: item.price });
     }
     setStore(next); saveStore(next);
   }

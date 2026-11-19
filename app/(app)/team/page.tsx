@@ -11,6 +11,7 @@ import {
   GOALS, TEAM_SIZE, goalLabel as labelOf, loadTeam, saveTeam, randCode, inviteLink, parseInvite,
   teamFromInvite, checkinsThisWeek, fetchTeam, teamAction, myMemberId, type TeamData, type RemoteTeam,
 } from "@/lib/team";
+import { track } from "@/lib/analytics";
 
 /** "今天 09:30", "昨天 21:10", "11月16日" */
 function when(iso: string) {
@@ -169,6 +170,7 @@ export default function TeamPage() {
 
   async function copyLink(t: TeamData) {
     await navigator.clipboard.writeText(inviteLink(t, user)).catch(() => {});
+    track("invite_link_copied", { members: members.length });
     setCopied(true);
     setToast("邀请链接已复制 📋 打开微信，粘贴给想一起减肥的朋友吧！");
     setTimeout(() => setCopied(false), 1500);
@@ -188,6 +190,7 @@ export default function TeamPage() {
     if (r.ok) adopt(r.data); else setMode("local");
     setDrawer(null);
     setToast("队伍创建成功！🎉");
+    track("team_created", { goal: t.goal, shared: r.ok });
     copyLink(t);
   }
 
@@ -206,9 +209,11 @@ export default function TeamPage() {
     if (r.ok) adopt(r.data); else setMode("local");
     setDrawer(null);
     setToast(`成功加入「${r.ok ? r.data.team.name : t.name}」！🎉`);
+    track("team_joined", { via: "paste", shared: r.ok });
   }
 
   function handleLeave() {
+    track("team_left");
     if (team && mode !== "local") void teamAction("leave", team.code, user);
     saveTeam(null);
     setTeam(null);
