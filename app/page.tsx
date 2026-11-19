@@ -8,20 +8,6 @@ const ink = "#2B1D3F";
 const sub = "#6E6380";
 const FEATHER = "linear-gradient(to right, transparent, #000 7%, #000 93%, transparent), linear-gradient(to bottom, transparent, #000 7%, #000 100%)";
 
-const chips = [
-  {
-    label: "拍照识热量", bg: "#FFF1E3", stroke: "#C2410C",
-    icon: <><path d="M4 8h3l2-3h6l2 3h3v11H4z" /><circle cx="12" cy="13" r="3.5" /></>,
-  },
-  {
-    label: "打卡养宠物", bg: "#F3E8FF", stroke: "#6D3FD1",
-    icon: <><circle cx="6" cy="10" r="2" /><circle cx="10" cy="6" r="2" /><circle cx="14" cy="6" r="2" /><circle cx="18" cy="10" r="2" /><path d="M12 12c-3 0-5 3-5 5.5 0 1.5 1.2 2 2.5 2 1 0 1.6-.6 2.5-.6s1.5.6 2.5.6c1.3 0 2.5-.5 2.5-2C17 15 15 12 12 12z" /></>,
-  },
-  {
-    label: "好友组队", bg: "#E6F6EC", stroke: "#15803D",
-    icon: <><circle cx="9" cy="8" r="3" /><path d="M3 20c0-3.3 2.7-6 6-6s6 2.7 6 6" /><circle cx="17" cy="9" r="2.5" /><path d="M16 14c2.8 0 5 2.2 5 5" /></>,
-  },
-];
 
 export default function WelcomePage() {
   return (
@@ -73,14 +59,6 @@ export default function WelcomePage() {
           <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: sub }}>
             拍照算热量、打卡养宠物、和好友组队，减脂这件事，不用一个人扛。
           </p>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {chips.map(c => (
-              <span key={c.label} style={{ display: "flex", alignItems: "center", gap: 5, padding: "7px 12px 7px 10px", borderRadius: 999, background: c.bg, fontSize: 12, fontWeight: 500, color: "#4A3B5E" }}>
-                <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={c.stroke} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">{c.icon}</svg>
-                {c.label}
-              </span>
-            ))}
-          </div>
           <Link
             href="/register/step1"
             style={{ marginTop: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, height: 58, borderRadius: 999, background: ink, color: "#FFD3A1", fontSize: 17, fontWeight: 700, textDecoration: "none" }}
