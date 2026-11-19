@@ -4,47 +4,22 @@ import { useState, useEffect } from "react";
 import { getUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import PetAvatar from "@/components/PetAvatar";
-
-/* ── types ── */
-interface TeamData {
-  id: string;
-  name: string;
-  goal: string;
-  code: string;
-  createdAt: string;
-}
+import { getMeals } from "@/lib/meals";
+import { getCheckinDates, todayStr } from "@/lib/pets";
+import { MEAL_LABELS } from "@/lib/nutrition";
+import {
+  GOALS, TEAM_SIZE, goalLabel as labelOf, loadTeam, saveTeam, randCode, inviteLink, parseInvite,
+  teamFromInvite, checkinsThisWeek, type TeamData,
+} from "@/lib/team";
 
 interface FeedItem {
-  id: number;
-  petEmoji: string;
-  petName: string;
+  id: string;
   type: "meal" | "workout";
   desc: string;
   detail: string;
   time: string;
-  liked: boolean;
 }
 
-const TEAM_KEY = "fitbuddy_team";
-const GOALS = [
-  { id: "fat", label: "🔥 一起减脂" },
-  { id: "checkin", label: "💪 健康打卡" },
-  { id: "diet", label: "🥗 均衡饮食" },
-];
-
-function randCode() {
-  return Math.random().toString(36).substring(2, 8).toUpperCase();
-}
-
-function loadTeam(): TeamData | null {
-  try { return JSON.parse(localStorage.getItem(TEAM_KEY) || "null"); } catch { return null; }
-}
-function saveTeam(t: TeamData | null) {
-  if (t) localStorage.setItem(TEAM_KEY, JSON.stringify(t));
-  else localStorage.removeItem(TEAM_KEY);
-}
-
-/* ── Toast ── */
 function Toast({ msg, onDone }: { msg: string; onDone: () => void }) {
   useEffect(() => { const t = setTimeout(onDone, 3000); return () => clearTimeout(t); }, [onDone]);
   return (
@@ -103,22 +78,24 @@ export default function TeamPage() {
     setTeam(loadTeam());
   }, []);
 
+  // Only real activity: today's meals and check-in from this browser.
   useEffect(() => {
     if (!user || !team) return;
-    setFeed([
-      { id:1, petEmoji:"🐼", petName:"胖达", type:"meal", desc:"胖达的主人记录了早餐 🍱", detail:"燕麦粥、鸡蛋 · 356 kcal", time:"今天 08:15", liked:false },
-      { id:2, petEmoji:"🐱", petName:"橘子", type:"workout", desc:"橘子的主人完成了运动打卡 💪", detail:"全身燃脂 · 20分钟", time:"今天 09:30", liked:false },
-      { id:3, petEmoji:"🐼", petName:"胖达", type:"meal", desc:"胖达的主人记录了午餐 🍱", detail:"番茄鸡蛋盖饭 · 520 kcal", time:"今天 12:30", liked:false },
-      { id:4, petEmoji: user.pet?.emoji ?? "🐾", petName: user.petName ?? "宠物", type:"meal", desc:`${user.petName ?? "宠物"}的主人记录了早餐 🍱`, detail:"记录了今日早餐", time:"今天 07:45", liked:false },
-    ]);
+    const pet = user.petName ?? "宠物";
+    const hhmm = (iso: string) => { const d = new Date(iso); return isNaN(d.getTime()) ? "今天" : `今天 ${d.toTimeString().slice(0, 5)}`; };
+    const items: (FeedItem & { at: string })[] = getMeals().map(m => ({
+      id: m.id, type: "meal" as const, at: m.createdAt,
+      desc: `${pet}的主人记录了${MEAL_LABELS[m.mealType]} 🍱`,
+      detail: `${m.foods} · ${Math.round(m.calories)} kcal`, time: hhmm(m.createdAt),
+    }));
+    if (getCheckinDates().includes(todayStr())) {
+      items.push({ id: "checkin", type: "workout", at: "", desc: `${pet}的主人完成了运动打卡 💪`, detail: "今日运动已打卡", time: "今天" });
+    }
+    setFeed(items.sort((x, y) => y.at.localeCompare(x.at)));
   }, [user, team]);
 
-  function inviteLink(code: string) {
-    return `https://fitbuddy-eta.vercel.app/join?code=${code}`;
-  }
-
-  async function copyLink(code: string) {
-    await navigator.clipboard.writeText(inviteLink(code)).catch(() => {});
+  async function copyLink(t: TeamData) {
+    await navigator.clipboard.writeText(inviteLink(t, user)).catch(() => {});
     setCopied(true);
     setToast("邀请链接已复制 📋 打开微信，粘贴给想一起减肥的朋友吧！");
     setTimeout(() => setCopied(false), 1500);
@@ -126,22 +103,22 @@ export default function TeamPage() {
 
   function handleCreate() {
     if (!teamName.trim()) return;
-    const t: TeamData = { id: randCode(), name: teamName.trim(), goal, code: randCode(), createdAt: new Date().toISOString() };
+    const t: TeamData = { id: randCode(), name: teamName.trim(), goal, code: randCode(), createdAt: new Date().toISOString(), role: "leader" };
     saveTeam(t);
     setTeam(t);
     setDrawer(null);
     setToast("队伍创建成功！🎉");
-    copyLink(t.code);
+    copyLink(t);
   }
 
   function handleJoin() {
-    const code = joinCode.trim().toUpperCase().slice(-6);
-    if (code.length < 6) return;
-    const t: TeamData = { id: randCode(), name: "我的健身队", goal: "fat", code, createdAt: new Date().toISOString() };
+    const inv = parseInvite(joinCode);
+    if (!inv) { setToast("没认出邀请码，请粘贴完整的邀请链接"); return; }
+    const t = teamFromInvite(inv);
     saveTeam(t);
     setTeam(t);
     setDrawer(null);
-    setToast("成功加入队伍！🎉");
+    setToast(`成功加入「${t.name}」！🎉`);
   }
 
   function handleLeave() {
@@ -150,17 +127,15 @@ export default function TeamPage() {
     setShowConfirm(false);
   }
 
-  function toggleLike(id: number) {
-    setFeed(prev => prev.map(f => f.id === id ? { ...f, liked: !f.liked } : f));
-  }
-
-  const goalLabel = GOALS.find(g => g.id === (team?.goal ?? goal))?.label ?? "";
-
-  const rankData = user ? [
-    { rank:"🥇", emoji:"🐼", pet:"胖达", name:"小美", days:5, bg:"#FFFBEB" },
-    { rank:"🥈", emoji: user.pet?.emoji ?? "🐾", pet: user.petName ?? "宠物", name: user.nickname, days:3, bg:"#fff" },
-    { rank:"🥉", emoji:"🐱", pet:"橘子", name:"阿杰", days:2, bg:"#fff" },
-  ] : [];
+  const goalLabel = labelOf(team?.goal ?? goal);
+  const isLeader = team?.role !== "member";
+  const checkedToday = getCheckinDates().includes(todayStr());
+  const members = [
+    ...(!isLeader && team?.leader ? [{ key: "leader", pet: team.leader.pet, name: team.leader.name, sub: "队长", leader: true, me: false }] : []),
+    ...(user ? [{ key: "me", pet: user.pet?.emoji ?? "🐾", name: user.nickname, sub: user.petName ?? "宠物", leader: isLeader, me: true }] : []),
+  ];
+  const openSlots = TEAM_SIZE - members.length;
+  const myWeek = checkinsThisWeek(getCheckinDates());
 
   /* ── No team ── */
   if (!team) return (
@@ -189,7 +164,7 @@ export default function TeamPage() {
 
       {drawer === "join" && (
         <Drawer title="加入队伍" onClose={() => setDrawer(null)}>
-          <input value={joinCode} onChange={e => setJoinCode(e.target.value)} placeholder="粘贴邀请链接或输入6位邀请码" style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:14, color:"#3B1F5E", outline:"none", boxSizing:"border-box", marginBottom:16 }} />
+          <input value={joinCode} onChange={e => setJoinCode(e.target.value)} placeholder="粘贴好友发来的邀请链接" style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:14, color:"#3B1F5E", outline:"none", boxSizing:"border-box", marginBottom:16 }} />
           <button onClick={handleJoin} style={{ width:"100%", padding:"14px 0", borderRadius:14, border:"none", background:"linear-gradient(135deg,#C084FC,#F9A8D4)", color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer" }}>加入</button>
         </Drawer>
       )}
@@ -210,9 +185,9 @@ export default function TeamPage() {
             <div>
               <h2 style={{ fontSize:20, fontWeight:800, color:"#3B1F5E", margin:"0 0 6px" }}>{team.name}</h2>
               <span style={{ background:"rgba(192,132,252,.15)", color:"#7C3AED", borderRadius:20, padding:"3px 12px", fontSize:12, fontWeight:600 }}>{goalLabel}</span>
-              <p style={{ fontSize:12, color:"#9CA3AF", margin:"8px 0 0" }}>3/6人</p>
+              <p style={{ fontSize:12, color:"#9CA3AF", margin:"8px 0 0" }}>{members.length}/{TEAM_SIZE}人</p>
             </div>
-            <button onClick={() => copyLink(team.code)} style={{ padding:"8px 14px", borderRadius:20, border:"none", background: copied ? "#D1FAE5" : "linear-gradient(135deg,#C084FC,#F9A8D4)", color: copied ? "#059669" : "#fff", fontSize:13, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
+            <button onClick={() => copyLink(team)} style={{ padding:"8px 14px", borderRadius:20, border:"none", background: copied ? "#D1FAE5" : "linear-gradient(135deg,#C084FC,#F9A8D4)", color: copied ? "#059669" : "#fff", fontSize:13, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
               {copied ? "✅ 已复制" : "邀请好友 🔗"}
             </button>
           </div>
@@ -221,55 +196,64 @@ export default function TeamPage() {
         {/* 2. Members */}
         <div style={{ background:"#fff", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 10px rgba(192,132,252,.08)" }}>
           <p style={{ fontSize:15, fontWeight:600, color:"#3B1F5E", margin:"0 0 12px" }}>队员</p>
-          {[
-            { emoji: user?.pet?.emoji ?? "🐾", pet: user?.petName ?? "宠物", name: (user?.nickname ?? "我") + " 👑", checked: true },
-            { emoji:"🐼", pet:"胖达", name:"小美", checked:true },
-            { emoji:"🐱", pet:"橘子", name:"阿杰", checked:false },
-          ].map((m, i) => (
-            <div key={i} style={{ display:"flex", alignItems:"center", padding:"10px 0", borderBottom: i<2 ? "1px solid #F9FAFB" : "none" }}>
-              <div style={{ marginRight:12 }}><PetAvatar pet={m.emoji} size={40} crop="head" /></div>
+          {members.map(m => (
+            <div key={m.key} style={{ display:"flex", alignItems:"center", padding:"10px 0", borderBottom:"1px solid #F9FAFB" }}>
+              <div style={{ marginRight:12 }}><PetAvatar pet={m.pet} size={40} crop="head" /></div>
               <div style={{ flex:1 }}>
-                <p style={{ fontSize:14, fontWeight:600, color:"#3B1F5E", margin:0 }}>{m.name}</p>
-                <p style={{ fontSize:12, color:"#9CA3AF", margin:0 }}>{m.pet}</p>
+                <p style={{ fontSize:14, fontWeight:600, color:"#3B1F5E", margin:0 }}>{m.name}{m.leader ? " 👑" : ""}{m.me ? <span style={{ fontSize:11, color:"#C084FC", fontWeight:600, marginLeft:6 }}>我</span> : null}</p>
+                <p style={{ fontSize:12, color:"#9CA3AF", margin:0 }}>{m.sub}</p>
               </div>
-              <span style={{ fontSize:12, fontWeight:600, color: m.checked ? "#10B981" : "#9CA3AF" }}>{m.checked ? "✅ 已打卡" : "⏰ 未打卡"}</span>
+              {m.me && <span style={{ fontSize:12, fontWeight:600, color: checkedToday ? "#10B981" : "#9CA3AF" }}>{checkedToday ? "✅ 已打卡" : "⏰ 未打卡"}</span>}
             </div>
           ))}
+
+          {/* Empty seats: invite */}
+          <div style={{ marginTop:12, border:"1.5px dashed #E9D5FF", borderRadius:14, padding:"16px 14px", textAlign:"center", background:"#FCFAFF" }}>
+            <div style={{ display:"flex", justifyContent:"center", gap:6, marginBottom:10 }}>
+              {Array.from({ length: openSlots }).map((_, i) => (
+                <span key={i} style={{ width:30, height:30, borderRadius:"50%", border:"1.5px dashed #D8B4FE", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"#D8B4FE", fontSize:16 }}>+</span>
+              ))}
+            </div>
+            <p style={{ fontSize:14, fontWeight:600, color:"#3B1F5E", margin:"0 0 4px" }}>{members.length <= 1 ? "还没有队友" : `还能再邀请 ${openSlots} 位好友`}</p>
+            <p style={{ fontSize:12, color:"#9CA3AF", margin:"0 0 12px", lineHeight:1.5 }}>把链接发给朋友，一起打卡、互相监督</p>
+            <button onClick={() => copyLink(team)} style={{ padding:"9px 20px", borderRadius:20, border:"none", background:"linear-gradient(135deg,#C084FC,#F9A8D4)", color:"#fff", fontSize:13, fontWeight:600, cursor:"pointer" }}>
+              {copied ? "✅ 链接已复制" : "复制邀请链接 🔗"}
+            </button>
+          </div>
         </div>
 
-        {/* 3. Leaderboard */}
+        {/* 3. Leaderboard: only real data, so just this user for now */}
         <div style={{ background:"#fff", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 10px rgba(192,132,252,.08)" }}>
           <p style={{ fontSize:15, fontWeight:600, color:"#3B1F5E", margin:"0 0 12px" }}>本周打卡排行 🏆</p>
-          {rankData.map((r, i) => (
-            <div key={i} style={{ display:"flex", alignItems:"center", padding:"10px 12px", borderRadius:10, background: r.bg, marginBottom:6 }}>
-              <span style={{ fontSize:22, marginRight:10 }}>{r.rank}</span>
-              <span style={{ marginRight:8, display:"inline-flex" }}><PetAvatar pet={r.emoji} size={32} crop="head" /></span>
+          {user && (
+            <div style={{ display:"flex", alignItems:"center", padding:"10px 12px", borderRadius:10, background:"#FFFBEB", marginBottom:6 }}>
+              <span style={{ fontSize:22, marginRight:10 }}>🥇</span>
+              <span style={{ marginRight:8, display:"inline-flex" }}><PetAvatar pet={user.pet?.emoji ?? "🐾"} size={32} crop="head" /></span>
               <div style={{ flex:1 }}>
-                <p style={{ fontSize:13, fontWeight:600, color:"#3B1F5E", margin:0 }}>{r.name}</p>
-                <p style={{ fontSize:11, color:"#9CA3AF", margin:0 }}>{r.pet}</p>
+                <p style={{ fontSize:13, fontWeight:600, color:"#3B1F5E", margin:0 }}>{user.nickname}</p>
+                <p style={{ fontSize:11, color:"#9CA3AF", margin:0 }}>{user.petName ?? "宠物"}</p>
               </div>
-              <span style={{ fontSize:13, fontWeight:700, color:"#C084FC" }}>{r.days}天</span>
+              <span style={{ fontSize:13, fontWeight:700, color:"#C084FC" }}>{myWeek}天</span>
             </div>
-          ))}
+          )}
+          <p style={{ fontSize:12, color:"#9CA3AF", margin:"8px 0 0", textAlign:"center" }}>队友加入后，会在这里一起比拼本周打卡天数</p>
         </div>
 
         {/* 4. Feed */}
         <div style={{ background:"#fff", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 10px rgba(192,132,252,.08)" }}>
           <p style={{ fontSize:15, fontWeight:600, color:"#3B1F5E", margin:"0 0 12px" }}>最新动态</p>
+          {feed.length === 0 && (
+            <p style={{ fontSize:13, color:"#9CA3AF", textAlign:"center", margin:"8px 0", lineHeight:1.6 }}>今天还没有动态<br />记录一餐或完成运动打卡，就会出现在这里</p>
+          )}
           {feed.map(f => (
             <div key={f.id} style={{ background:"#FAFAFA", borderRadius:12, padding:"12px", marginBottom:10 }}>
               <div style={{ display:"flex", gap:10 }}>
-                <PetAvatar pet={f.petEmoji} size={46} crop="head" />
-                <div style={{ flex:1 }}>
+                <PetAvatar pet={user?.pet?.emoji ?? "🐾"} size={46} crop="head" />
+                <div style={{ flex:1, minWidth:0 }}>
                   <p style={{ fontSize:13, fontWeight:700, color:"#3B1F5E", margin:"0 0 3px" }}>{f.desc}</p>
-                  <p style={{ fontSize:12, color:"#9CA3AF", margin:0 }}>{f.detail}</p>
+                  <p style={{ fontSize:12, color:"#9CA3AF", margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.detail}</p>
                 </div>
-              </div>
-              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center", marginTop:10 }}>
-                <button onClick={() => toggleLike(f.id)} style={{ padding:"5px 12px", borderRadius:20, border:"none", background: f.liked ? "#F3E8FF" : "#F3F4F6", color: f.liked ? "#C084FC" : "#9CA3AF", fontSize:12, fontWeight:600, cursor:"pointer" }}>
-                  👊 {f.liked ? "1" : "加油"}
-                </button>
-                <span style={{ fontSize:11, color:"#9CA3AF" }}>{f.time}</span>
+                <span style={{ fontSize:11, color:"#9CA3AF", whiteSpace:"nowrap" }}>{f.time}</span>
               </div>
             </div>
           ))}
