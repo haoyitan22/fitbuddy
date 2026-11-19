@@ -2,7 +2,7 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
-import { getUser, isLoggedIn } from "@/lib/auth";
+import { getUser, isLoggedIn, PENDING_INVITE_KEY } from "@/lib/auth";
 import PetAvatar from "@/components/PetAvatar";
 import { goalLabel, loadTeam, parseInvite, saveTeam, teamFromInvite, fetchTeam, teamAction, TEAM_SIZE, type TeamData, type RemoteTeam } from "@/lib/team";
 
@@ -48,6 +48,8 @@ function JoinContent() {
     }
     if (current && current.code !== invite.code) void teamAction("leave", current.code, user);
     saveTeam(teamFromInvite(invite));
+    // Signing up next: keep this invite when the new account clears old data.
+    if (!isLoggedIn()) { try { sessionStorage.setItem(PENDING_INVITE_KEY, "1"); } catch { /* ignore */ } }
     setJoined(true);
     setTimeout(() => router.push(isLoggedIn() ? "/team" : "/register/step1"), 1200);
   }

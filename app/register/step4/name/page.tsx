@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { getTempData, saveUserData, createSession, clearTempData } from "@/lib/auth";
+import { getTempData, saveUserData, createSession, clearTempData, clearPreviousAccountData } from "@/lib/auth";
 import type { UserProfile, Pet } from "@/lib/auth";
 import PetAvatar from "@/components/PetAvatar";
 
@@ -85,6 +85,8 @@ export default function NamingPage() {
       petName: petName.trim(),
       petJoinDate: new Date().toISOString(),
     };
+    // A new account starts empty: no coins, items or records left by an earlier account here.
+    clearPreviousAccountData();
     saveUserData(profile);
     createSession(profile.email);
     clearTempData();
