@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getUser, saveUserData, logout } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import PetAvatar from "@/components/PetAvatar";
+import { getWeightLog, logWeight, recentWeighIns, weekScores, dayScore, type WeighIn } from "@/lib/weight";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis,
   Tooltip, ResponsiveContainer, Cell,
@@ -38,19 +39,30 @@ function getAvatarPhoto() {
 }
 const AVATAR_COLORS = ["#C084FC", "#F9A8D4", "#6EE7B7", "#93C5FD", "#FCD34D", "#F87171"];
 
-const DAYS = ["一","二","三","四","五","六","日"];
-const weightData = [65,64.8,64.5,64.6,64.3,64.1,63.9].map((v,i) => ({ d:`周${DAYS[i]}`, v }));
-const scoreData  = [75,82,68,85,79,88,72].map((v,i)  => ({ d:`周${DAYS[i]}`, v }));
+const md = (date: string) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`;
+
+/** Consecutive days (ending today, or yesterday if today has no score yet) with a diet score ≥ 80. */
+function goodDietStreak() {
+  let n = 0;
+  const d = new Date();
+  if (dayScore(d.toISOString().slice(0, 10)) === null) d.setUTCDate(d.getUTCDate() - 1);
+  for (let i = 0; i < 60; i++) {
+    const s = dayScore(d.toISOString().slice(0, 10));
+    if (s === null || s < 80) break;
+    n++; d.setUTCDate(d.getUTCDate() - 1);
+  }
+  return n;
+}
 
 /* ── badge definitions ── */
-function getBadges(checkins: number) {
+function getBadges(checkins: number, lostKg: number, dietStreak: number) {
   return [
     { emoji:"🌱", name:"健康新芽",   cond:"开启健康之旅",       unlocked:true,  progress:null },
     { emoji:"🔥", name:"打卡达人",   cond:`还差${Math.max(0,7-checkins)}天`, unlocked:checkins>=7, progress:checkins<7 },
     { emoji:"💧", name:"水分充足",   cond:"连续7天饮水达标",     unlocked:false, progress:true },
-    { emoji:"🥗", name:"均衡饮食",   cond:"连续5天评分≥80",     unlocked:false, progress:true },
+    { emoji:"🥗", name:"均衡饮食",   cond: dietStreak>=5 ? "连续5天评分≥80" : `连续5天评分≥80（已${dietStreak}天）`, unlocked:dietStreak>=5, progress:dietStreak<5 },
     { emoji:"💪", name:"运动达人",   cond:`还差${Math.max(0,10-checkins)}次`, unlocked:checkins>=10, progress:checkins<10 },
-    { emoji:"⭐", name:"减重里程碑", cond:"减重达到1kg",         unlocked:false, progress:true },
+    { emoji:"⭐", name:"减重里程碑", cond: lostKg>=1 ? "减重达到1kg" : lostKg>0 ? `已减${lostKg.toFixed(1)}kg，目标1kg` : "减重达到1kg", unlocked:lostKg>=1, progress:lostKg<1 },
   ];
 }
 
@@ -75,6 +87,13 @@ export default function ProfilePage() {
   const [pwCur, setPwCur] = useState(""); const [pwNew, setPwNew] = useState(""); const [pwConf, setPwConf] = useState("");
   const [pwMsg, setPwMsg] = useState("");
   const [showConfirmLogout, setShowConfirmLogout] = useState(false);
+  // Real records only.
+  const [weighIns, setWeighIns] = useState<WeighIn[]>([]);   // last 14 days
+  const [allWeighIns, setAllWeighIns] = useState<WeighIn[]>([]);
+  const [todayKg, setTodayKg] = useState("");
+  const [editingToday, setEditingToday] = useState(false);
+  const [scores, setScores] = useState<ReturnType<typeof weekScores>>([]);
+  const [dietStreak, setDietStreak] = useState(0);
 
   useEffect(() => {
     const u = getUser(); setUser(u);
@@ -84,7 +103,17 @@ export default function ProfilePage() {
     setAvatarColor(getAvatarColor());
     setAvatarPhoto(getAvatarPhoto());
     try { setDietPrefs(JSON.parse(localStorage.getItem("fitbuddy_diet_prefs")||"[]")); } catch { /**/ }
+    setWeighIns(recentWeighIns()); setAllWeighIns(getWeightLog());
+    setScores(weekScores()); setDietStreak(goodDietStreak());
   }, []);
+
+  function saveWeighIn(kg: number) {
+    if (!(kg >= 25 && kg <= 300)) return;
+    const all = logWeight(kg);
+    setAllWeighIns(all); setWeighIns(recentWeighIns());
+    setUser(getUser()); setWeightInput(String(Math.round(kg * 10) / 10));
+    setTodayKg(""); setEditingToday(false);
+  }
 
   function updateUser(patch: Partial<UserProfile>) {
     if (!user) return;
@@ -151,7 +180,7 @@ export default function ProfilePage() {
         <div>
           <input value={heightInput} onChange={e=>setHeightInput(e.target.value)} style={{...inputStyle,marginBottom:10}} placeholder="身高 cm" type="number" />
           <input value={weightInput} onChange={e=>setWeightInput(e.target.value)} style={inputStyle} placeholder="体重 kg" type="number" />
-          <Btn onClick={()=>{ updateUser({height:parseFloat(heightInput)||user!.height, weight:parseFloat(weightInput)||user!.weight}); closeModal(); }}>确认</Btn>
+          <Btn onClick={()=>{ const h=parseFloat(heightInput)||user!.height, w=parseFloat(weightInput); updateUser({height:h}); if (w && w!==user!.weight) saveWeighIn(w); closeModal(); }}>确认</Btn>
         </div>
       )
     });
@@ -197,8 +226,14 @@ export default function ProfilePage() {
   const targetW  = user?.targetWeight ?? 0;
   const diff     = (currentW - targetW).toFixed(1);
   const journeyDays = daysSince(user?.petJoinDate);
-  const avgScore = Math.round(scoreData.reduce((a,b)=>a+b.v,0)/7);
-  const badges   = getBadges(checkins);
+  const scored   = scores.filter(d => d.score !== null);
+  const avgScore = scored.length ? Math.round(scored.reduce((a,b)=>a+(b.score ?? 0),0)/scored.length) : 0;
+  const todayStr = new Date().toISOString().slice(0, 10);
+  const loggedToday = weighIns.find(w => w.date === todayStr);
+  const first = weighIns[0], last = weighIns[weighIns.length - 1];
+  const change = weighIns.length >= 2 ? Math.round((last.kg - first.kg) * 10) / 10 : 0;
+  const lostKg = allWeighIns.length >= 2 ? Math.max(0, allWeighIns[0].kg - allWeighIns[allWeighIns.length - 1].kg) : 0;
+  const badges   = getBadges(checkins, lostKg, dietStreak);
 
   return (
     <div style={{minHeight:"100vh",background:"linear-gradient(135deg,#FDF4FF,#FFF0F6)",paddingBottom:88}}>
@@ -269,33 +304,73 @@ export default function ProfilePage() {
         <div style={{background:"#fff",borderRadius:16,padding:"16px",marginBottom:14,boxShadow:"0 2px 10px rgba(192,132,252,.08)"}}>
           <p style={{fontSize:15,fontWeight:600,color:"#3B1F5E",margin:"0 0 14px"}}>本周概览 📊</p>
 
-          {/* Weight chart */}
-          <p style={{fontSize:13,color:"#6B7280",margin:"0 0 6px",fontWeight:600}}>体重变化</p>
-          <ResponsiveContainer width="100%" height={120}>
-            <LineChart data={weightData} margin={{top:5,right:10,bottom:0,left:-20}}>
-              <XAxis dataKey="d" tick={{fontSize:10,fill:"#9CA3AF"}} axisLine={false} tickLine={false} />
-              <YAxis domain={['auto','auto']} tick={{fontSize:10,fill:"#9CA3AF"}} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{fontSize:12,borderRadius:8}} />
-              <Line type="monotone" dataKey="v" stroke="#C084FC" strokeWidth={2.5} dot={{r:3,fill:"#C084FC"}} />
-            </LineChart>
-          </ResponsiveContainer>
-          <p style={{fontSize:12,color:"#10B981",fontWeight:600,textAlign:"center",margin:"4px 0 16px"}}>本周减重 1.1kg 🎉</p>
+          {/* Weight: only days the user weighed in */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"0 0 8px"}}>
+            <p style={{fontSize:13,color:"#6B7280",margin:0,fontWeight:600}}>体重变化 <span style={{fontWeight:400,color:"#9CA3AF"}}>近 14 天</span></p>
+            {loggedToday && !editingToday && (
+              <button onClick={()=>{ setTodayKg(String(loggedToday.kg)); setEditingToday(true); }} style={{background:"none",border:"none",color:"#C084FC",fontSize:12,fontWeight:600,cursor:"pointer",padding:0}}>
+                今天 {loggedToday.kg}kg ✓ 修改
+              </button>
+            )}
+          </div>
+          {(!loggedToday || editingToday) && (
+            <div style={{display:"flex",gap:8,alignItems:"center",background:"#FCFAFF",borderRadius:12,padding:"10px 12px",marginBottom:10}}>
+              <span style={{fontSize:13,color:"#3B1F5E",fontWeight:600,flexShrink:0}}>⚖️ 今天体重</span>
+              <input value={todayKg} onChange={e=>setTodayKg(e.target.value.replace(/[^\d.]/g,"").slice(0,5))} onKeyDown={e=>{ if(e.key==="Enter") saveWeighIn(parseFloat(todayKg)); }}
+                inputMode="decimal" placeholder={user?.weight ? String(user.weight) : "kg"} aria-label="今天体重"
+                style={{flex:1,minWidth:0,padding:"8px 10px",borderRadius:10,border:"1.5px solid #F3E8FF",fontSize:14,color:"#3B1F5E",outline:"none"}} />
+              <span style={{fontSize:13,color:"#9CA3AF"}}>kg</span>
+              <button onClick={()=>saveWeighIn(parseFloat(todayKg))} disabled={!(parseFloat(todayKg)>=25)}
+                style={{padding:"8px 14px",borderRadius:10,border:"none",background:parseFloat(todayKg)>=25?"#C084FC":"#E9D5FF",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer",flexShrink:0}}>记录</button>
+            </div>
+          )}
 
-          {/* Score chart */}
-          <p style={{fontSize:13,color:"#6B7280",margin:"0 0 6px",fontWeight:600}}>饮食健康评分</p>
-          <ResponsiveContainer width="100%" height={120}>
-            <BarChart data={scoreData} margin={{top:5,right:10,bottom:0,left:-20}}>
-              <XAxis dataKey="d" tick={{fontSize:10,fill:"#9CA3AF"}} axisLine={false} tickLine={false} />
-              <YAxis domain={[0,100]} tick={{fontSize:10,fill:"#9CA3AF"}} axisLine={false} tickLine={false} />
-              <Tooltip contentStyle={{fontSize:12,borderRadius:8}} />
-              <Bar dataKey="v" radius={[4,4,0,0]}>
-                {scoreData.map((entry,i)=>(
-                  <Cell key={i} fill={entry.v>=80?"#6EE7B7":entry.v>=60?"#C084FC":"#F9A8D4"} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-          <p style={{fontSize:12,color:"#9CA3AF",fontWeight:600,textAlign:"center",margin:"4px 0 0"}}>本周平均 {avgScore}分</p>
+          {weighIns.length >= 2 ? (
+            <>
+              <ResponsiveContainer width="100%" height={120}>
+                <LineChart data={weighIns.map(w => ({ d: md(w.date), v: w.kg }))} margin={{top:5,right:10,bottom:0,left:-20}}>
+                  <XAxis dataKey="d" tick={{fontSize:10,fill:"#9CA3AF"}} axisLine={false} tickLine={false} />
+                  <YAxis domain={['auto','auto']} tick={{fontSize:10,fill:"#9CA3AF"}} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{fontSize:12,borderRadius:8}} formatter={(v) => [`${v} kg`, "体重"]} />
+                  <Line type="monotone" dataKey="v" stroke="#C084FC" strokeWidth={2.5} dot={{r:3,fill:"#C084FC"}} />
+                </LineChart>
+              </ResponsiveContainer>
+              <p style={{fontSize:12,fontWeight:600,textAlign:"center",margin:"4px 0 16px",color: change < 0 ? "#10B981" : change > 0 ? "#F59E0B" : "#9CA3AF"}}>
+                {change < 0 ? `比 ${md(first.date)} 轻了 ${Math.abs(change)}kg 🎉` : change > 0 ? `比 ${md(first.date)} 重了 ${change}kg，慢慢来 💪` : `和 ${md(first.date)} 持平`}
+                {user?.targetWeight && last.kg > user.targetWeight ? <span style={{color:"#9CA3AF",fontWeight:400}}> · 离目标还有 {(last.kg - user.targetWeight).toFixed(1)}kg</span> : null}
+              </p>
+            </>
+          ) : (
+            <div style={{textAlign:"center",padding:"14px 8px 18px",color:"#9CA3AF",fontSize:12,lineHeight:1.7}}>
+              {weighIns.length === 1
+                ? <>已记录 {md(weighIns[0].date)}：<b style={{color:"#3B1F5E"}}>{weighIns[0].kg}kg</b><br />再记一天，就能看到你的体重曲线</>
+                : <>还没有体重记录<br />每天称一次记下来，这里会画出你的变化曲线</>}
+            </div>
+          )}
+
+          {/* Diet score: real days only (two or more meals recorded) */}
+          <p style={{fontSize:13,color:"#6B7280",margin:"0 0 6px",fontWeight:600}}>饮食健康评分 <span style={{fontWeight:400,color:"#9CA3AF"}}>本周</span></p>
+          {scored.length > 0 ? (
+            <>
+              <ResponsiveContainer width="100%" height={120}>
+                <BarChart data={scores.map(d => ({ d: d.label, v: d.score }))} margin={{top:5,right:10,bottom:0,left:-20}}>
+                  <XAxis dataKey="d" tick={{fontSize:10,fill:"#9CA3AF"}} axisLine={false} tickLine={false} />
+                  <YAxis domain={[0,100]} tick={{fontSize:10,fill:"#9CA3AF"}} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{fontSize:12,borderRadius:8}} formatter={(v) => [`${v} 分`, "评分"]} />
+                  <Bar dataKey="v" radius={[4,4,0,0]}>
+                    {scores.map((entry,i)=>(
+                      <Cell key={i} fill={(entry.score ?? 0)>=80?"#6EE7B7":(entry.score ?? 0)>=60?"#C084FC":"#F9A8D4"} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+              <p style={{fontSize:12,color:"#9CA3AF",fontWeight:600,textAlign:"center",margin:"4px 0 0"}}>本周 {scored.length} 天有评分，平均 {avgScore} 分</p>
+            </>
+          ) : (
+            <div style={{textAlign:"center",padding:"14px 8px 6px",color:"#9CA3AF",fontSize:12,lineHeight:1.7}}>
+              本周还没有评分<br />一天记录两餐以上，就会按你的热量和营养目标打分
+            </div>
+          )}
         </div>
 
         {/* ── 3. Badges ── */}
