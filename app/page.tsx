@@ -61,10 +61,10 @@ export default function WelcomePage() {
           </p>
           <Link
             href="/register/step1"
-            style={{ marginTop: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, height: 58, borderRadius: 999, background: ink, color: "#FFD3A1", fontSize: 17, fontWeight: 700, textDecoration: "none" }}
+            style={{ marginTop: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, height: 58, borderRadius: 999, background: "linear-gradient(90deg, #FFA071, #FF7A45)", color: "#FFFFFF", fontSize: 17, fontWeight: 700, textDecoration: "none", boxShadow: "0 8px 18px rgba(255, 122, 69, 0.3)" }}
           >
             开始我的旅程
-            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFD3A1" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
+            <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#FFFFFF" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12h14" /><path d="M13 6l6 6-6 6" /></svg>
           </Link>
           <p style={{ margin: 0, textAlign: "center", fontSize: 14, color: sub }}>
             已有账号？<Link href="/login" style={{ color: "#6D3FD1", fontWeight: 700, textDecoration: "none", padding: "8px 2px" }}>去登录</Link>
