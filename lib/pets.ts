@@ -78,10 +78,10 @@ function wearClips(kind: PetKind, items: string[]): Record<string, PetWear> {
 }
 const WEAR: Partial<Record<PetKind, Record<string, PetWear>>> = {
   panda: wearClips("panda", ["dumbbells", "tumbler", "headband", "bandana"]),
-  cat: wearClips("cat", ["dumbbells"]),
-  hamster: wearClips("hamster", ["dumbbells"]),
-  bear: wearClips("bear", ["dumbbells"]),
-  fox: wearClips("fox", ["dumbbells"]),
+  cat: wearClips("cat", ["dumbbells", "tumbler"]),
+  hamster: wearClips("hamster", ["dumbbells", "tumbler"]),
+  bear: wearClips("bear", ["dumbbells", "tumbler"]),
+  fox: wearClips("fox", ["dumbbells", "tumbler"]),
 };
 
 export function petWear(kind: PetKind | null, itemId?: string | null): PetWear | null {
