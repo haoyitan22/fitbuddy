@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { getUser, saveUserData, logout } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import PetAvatar from "@/components/PetAvatar";
+import { targetsFor } from "@/lib/goals";
 import { getWeightLog, logWeight, recentWeighIns, weekScores, dayScore, type WeighIn } from "@/lib/weight";
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis,
@@ -40,6 +41,7 @@ function getAvatarPhoto() {
 }
 const AVATAR_COLORS = ["#C084FC", "#F9A8D4", "#6EE7B7", "#93C5FD", "#FCD34D", "#F87171"];
 
+const ACTIVITY_LABELS: Record<string, string> = { sedentary: "久坐", light: "轻度运动", moderate: "中度运动", intense: "高强度运动" };
 const md = (date: string) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`;
 
 /** Consecutive days (ending today, or yesterday if today has no score yet) with a diet score ≥ 80. */
@@ -83,6 +85,7 @@ export default function ProfilePage() {
   // form states
   const [nickInput, setNickInput] = useState("");
   const [targetInput, setTargetInput] = useState("");
+  const [monthsInput, setMonthsInput] = useState("");
   const [heightInput, setHeightInput] = useState("");
   const [weightInput, setWeightInput] = useState("");
   const [dietPrefs, setDietPrefs] = useState<string[]>([]);
@@ -168,8 +171,12 @@ export default function ProfilePage() {
       title:"修改目标体重",
       body:(
         <div>
-          <input value={targetInput} onChange={e=>setTargetInput(e.target.value)} style={inputStyle} placeholder="目标体重 kg" type="number" />
-          <Btn onClick={()=>{ updateUser({targetWeight:parseFloat(targetInput)||user!.targetWeight}); closeModal(); }}>确认</Btn>
+          <p style={{fontSize:12,color:"#9CA3AF",margin:"0 0 6px"}}>目标体重（kg）</p>
+          <input value={targetInput} onChange={e=>setTargetInput(e.target.value)} style={{...inputStyle,marginBottom:12}} placeholder="目标体重 kg" type="number" />
+          <p style={{fontSize:12,color:"#9CA3AF",margin:"0 0 6px"}}>计划用几个月达成</p>
+          <input value={monthsInput} onChange={e=>setMonthsInput(e.target.value.replace(/\D/g,"").slice(0,2))} style={inputStyle} placeholder="例如 3" inputMode="numeric" />
+          <p style={{fontSize:11,color:"#C4B5D0",margin:"8px 0 0",lineHeight:1.5}}>每日热量目标会按新的目标和时间重新计算</p>
+          <Btn onClick={()=>{ const m=parseInt(monthsInput); updateUser({targetWeight:parseFloat(targetInput)||user!.targetWeight, ...(m>=1&&m<=24?{goalMonths:m}:{})}); closeModal(); }}>确认</Btn>
         </div>
       )
     };
@@ -229,7 +236,7 @@ export default function ProfilePage() {
   const activeModal = modal ? MODALS[modal]() : null;
   const openNick = () => { setNickInput(user?.nickname ?? ""); setModal("nick"); };
   const openAvatar = () => setModal("avatar");
-  const openTarget = () => { setTargetInput(user?.targetWeight ? String(user.targetWeight) : ""); setModal("target"); };
+  const openTarget = () => { setTargetInput(user?.targetWeight ? String(user.targetWeight) : ""); setMonthsInput(user?.goalMonths ? String(user.goalMonths) : "3"); setModal("target"); };
   const openBodyStats = () => { setHeightInput(user?.height ? String(user.height) : ""); setWeightInput(user?.weight ? String(user.weight) : ""); setModal("bodyStats"); };
   const openDiet = () => setModal("diet");
   const openPassword = () => { setPwCur(""); setPwNew(""); setPwConf(""); setPwMsg(""); setModal("password"); };
@@ -312,6 +319,50 @@ export default function ProfilePage() {
             ))}
           </div>
         </div>
+
+        {/* ── Daily calorie target: how it is worked out ── */}
+        {(() => {
+          const t = targetsFor(user), p = t.plan;
+          const row = (label: React.ReactNode, val: React.ReactNode, sub?: React.ReactNode) => (
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:10,padding:"8px 0",borderBottom:"1px solid #F9F5FF"}}>
+              <div><p style={{margin:0,fontSize:13,color:"#3B1F5E"}}>{label}</p>{sub && <p style={{margin:"2px 0 0",fontSize:11,color:"#9CA3AF",lineHeight:1.4}}>{sub}</p>}</div>
+              <span style={{fontSize:13,fontWeight:700,color:"#3B1F5E",whiteSpace:"nowrap"}}>{val}</span>
+            </div>
+          );
+          return (
+            <div id="goal" className="ph-no-capture" style={{background:"#fff",borderRadius:16,padding:"16px",marginBottom:14,boxShadow:"0 2px 10px rgba(192,132,252,.08)",scrollMarginTop:16}}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
+                <p style={{fontSize:15,fontWeight:600,color:"#3B1F5E",margin:0}}>每日热量目标 🎯</p>
+                <p style={{margin:0}}><span style={{fontSize:24,fontWeight:800,color:"#C084FC"}}>{t.calories}</span><span style={{fontSize:12,color:"#9CA3AF",marginLeft:3}}>kcal</span></p>
+              </div>
+              {!p ? (
+                <p style={{fontSize:12,color:"#9CA3AF",margin:"8px 0 0",lineHeight:1.6}}>资料不完整，暂时用默认值。在下面「修改身高体重」里补全身高、体重，就会按你的身体情况计算。</p>
+              ) : (
+                <div style={{marginTop:8}}>
+                  {row("基础代谢", `${p.bmr} kcal`, "躺着不动一天也会消耗的热量，按身高、体重、年龄、性别计算")}
+                  {row(<>× 活动系数 {p.activityFactor}</>, `${p.tdee} kcal`, `${ACTIVITY_LABELS[user?.activityLevel ?? ""] ?? "轻度运动"}，算出你每天大约消耗的总热量`)}
+                  {p.goal !== "maintain" && row(
+                    p.goal === "lose" ? "− 减脂缺口" : "+ 增重盈余",
+                    `${Math.abs(p.adjust)} kcal`,
+                    p.monthsNeeded ? `约每周${p.goal === "lose" ? "减" : "增"} ${Math.abs(p.weeklyKg)}kg，预计 ${p.monthsNeeded} 个月到 ${user?.targetWeight}kg` : null,
+                  )}
+                  {row(<b>= 每日目标</b>, <span style={{color:"#C084FC"}}>{t.calories} kcal</span>, `蛋白质 ${t.protein}g · 脂肪不超过 ${t.fat}g`)}
+                  {p.capped && p.goal === "lose" && (
+                    <p style={{fontSize:12,color:"#B45309",background:"#FEF3C7",borderRadius:10,padding:"8px 10px",margin:"10px 0 0",lineHeight:1.5}}>
+                      {user?.goalMonths} 个月减 {((user?.weight ?? 0) - (user?.targetWeight ?? 0)).toFixed(1)}kg 有点快，已按安全速度计算（每天最多少吃消耗量的 1/4）。
+                    </p>
+                  )}
+                  {p.floored && (
+                    <p style={{fontSize:12,color:"#B45309",background:"#FEF3C7",borderRadius:10,padding:"8px 10px",margin:"10px 0 0",lineHeight:1.5}}>
+                      已到安全下限 {user?.gender === "male" ? 1500 : 1200} kcal，不建议再少吃。想更快一些，可以增加运动量。
+                    </p>
+                  )}
+                  <p style={{fontSize:11,color:"#C4B5D0",margin:"10px 0 0",lineHeight:1.5}}>按 Mifflin-St Jeor 公式估算，仅供参考；改了体重、身高或目标后会自动重算。</p>
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         {/* ── 2. Charts ── */}
         <div style={{background:"#fff",borderRadius:16,padding:"16px",marginBottom:14,boxShadow:"0 2px 10px rgba(192,132,252,.08)"}}>

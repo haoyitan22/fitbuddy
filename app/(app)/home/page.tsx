@@ -111,7 +111,10 @@ export default function HomePage() {
 
       {/* 2. 今日热量 */}
       <div style={card}>
-        <p style={{ margin: "0 0 12px", fontSize: "13px", fontWeight: 600, color: "#3B1F5E" }}>今日热量</p>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "0 0 12px" }}>
+          <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "#3B1F5E" }}>今日热量</p>
+          <a href="/profile#goal" style={{ fontSize: "11px", color: "#C084FC", textDecoration: "none" }}>目标怎么算的 ›</a>
+        </div>
         <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
           <CalorieRing eaten={totals.calories} goal={goal} />
           <div style={{ display: "flex", flexDirection: "column", gap: "10px", flex: 1 }}>
