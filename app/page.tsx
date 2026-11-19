@@ -57,7 +57,7 @@ export default function WelcomePage() {
             吃好一点，动一动<br />有毛孩子陪你变健康
           </h1>
           <p style={{ margin: 0, fontSize: 14, lineHeight: 1.6, color: sub }}>
-            拍照算热量、打卡养宠物、和好友组队，减脂这件事，不用一个人扛。
+            拍照算热量、打卡养宠物、和好友组队，减脂这件事，我们一起陪你。
           </p>
           <Link
             href="/register/step1"
