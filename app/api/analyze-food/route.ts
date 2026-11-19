@@ -82,22 +82,30 @@ function parseJson(text: string): Record<string, unknown> | null {
 }
 
 /**
- * Recognition uses temperature 0 (the same input gives the same answer as far as the
- * model allows). Meal ideas pass a higher one so suggestions don't repeat.
+ * Claude Opus 5.5 / Sonnet 5.5 reject sampling parameters (temperature, top_p, top_k)
+ * with a 400 error, so they are only sent to the older fast model. Repeatable photo
+ * results come from the fingerprint cache instead.
  */
+const acceptsTemperature = (m: string) => m === MODEL_FAST;
+
+/** Try the model, then each fallback in turn (e.g. Opus → Sonnet → Haiku) until one answers. */
 async function ask(client: Anthropic, content: Anthropic.MessageParam["content"], maxTokens = 1024, model = MODEL_FAST, temperature = 0) {
-  const run = (m: string) => client.messages.create({ model: m, max_tokens: maxTokens, temperature, messages: [{ role: "user", content }] });
-  let response;
-  try {
-    response = await run(model);
-  } catch (e) {
-    if (model === MODEL_FAST) throw e;
-    const fallback = model === MODEL_FALLBACK ? MODEL_FAST : MODEL_FALLBACK;
-    console.error(`analyze-food: ${model} failed, falling back to ${fallback}:`, e instanceof Error ? e.message : e);
-    response = await run(fallback);
+  const chain = [model, MODEL_FALLBACK, MODEL_FAST].filter((m, i, all) => all.indexOf(m) === i && (i === 0 || m !== model));
+  let lastError: unknown;
+  for (const m of chain.slice(chain.indexOf(model))) {
+    try {
+      const response = await client.messages.create({
+        model: m, max_tokens: maxTokens, messages: [{ role: "user", content }],
+        ...(acceptsTemperature(m) ? { temperature } : {}),
+      });
+      const block = response.content.find(b => b.type === "text");
+      return parseJson(block && block.type === "text" ? block.text : "");
+    } catch (e) {
+      lastError = e;
+      console.error(`analyze-food: ${m} failed:`, e instanceof Error ? e.message : e);
+    }
   }
-  const block = response.content.find(b => b.type === "text");
-  return parseJson(block && block.type === "text" ? block.text : "");
+  throw lastError;
 }
 
 /** What the AI writes back: as little as possible (output length is most of the wait). */
