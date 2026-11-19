@@ -82,9 +82,14 @@ export default function RecordPage() {
         setImageBase64(compressed.split(",")[1]);
         setMimeType("image/jpeg");
       };
+      // e.g. a HEIC photo on a browser that can't decode it
+      img.onerror = () => setError("这张照片的格式打不开，换一张试试（JPG / PNG 都可以）");
       img.src = dataUrl;
     };
+    reader.onerror = () => setError("照片读取失败，请重新选择");
     reader.readAsDataURL(file);
+    // Let the same photo be picked again later.
+    e.target.value = "";
   }
 
   async function handleAnalyze() {
@@ -153,7 +158,7 @@ export default function RecordPage() {
       {/* 标题 */}
       <div style={{ marginTop: "4px" }}>
         <h1 style={{ fontSize: "20px", fontWeight: 700, color: "#3B1F5E", margin: 0 }}>记录饮食</h1>
-        <p style={{ fontSize: "13px", color: "#9CA3AF", marginTop: "4px" }}>拍照上传，AI 自动分析营养成分</p>
+        <p style={{ fontSize: "13px", color: "#9CA3AF", marginTop: "4px" }}>拍照或选相册里的照片，AI 自动分析营养成分</p>
       </div>
 
       {/* 选餐次 */}
@@ -191,7 +196,7 @@ export default function RecordPage() {
               </button>
             )}
             <button onClick={retake} style={{ ...btn, marginTop: "12px", background: "#F9F5FF", color: "#9CA3AF" }}>
-              重新拍照，替换这条记录
+              换一张照片，替换这条记录
             </button>
             <button onClick={() => router.push("/home")} style={{ ...btn, marginTop: "8px", background: dirty ? "#F3F4F6" : "#C084FC", color: dirty ? "#9CA3AF" : "#fff" }}>
               {dirty ? "不保存，返回首页" : "返回首页"}
@@ -215,12 +220,13 @@ export default function RecordPage() {
         ) : (
           <>
             <div style={{ fontSize: "48px", marginBottom: "12px" }}>📷</div>
-            <p style={{ fontSize: "15px", fontWeight: 600, color: "#C084FC", margin: 0 }}>点击拍照 / 上传图片</p>
+            <p style={{ fontSize: "15px", fontWeight: 600, color: "#C084FC", margin: 0 }}>拍照或从相册选择</p>
             <p style={{ fontSize: "12px", color: "#C4B5D0", marginTop: "4px" }}>支持 JPG、PNG、HEIC</p>
           </>
         )}
       </div>}
-      <input ref={fileRef} type="file" accept="image/*" capture="environment"
+      {/* No `capture`: phones then offer both the camera and the photo library. */}
+      <input ref={fileRef} type="file" accept="image/*"
         onChange={handleFileChange} style={{ display: "none" }} />
 
       {/* 重新选择 */}
@@ -261,7 +267,7 @@ export default function RecordPage() {
             保存到{MEAL_LABELS[mealType]}记录 ✓
           </button>
           <button onClick={reset} style={{ ...btn, marginTop: "8px", background: "#F9F5FF", color: "#9CA3AF" }}>
-            重新拍照
+            换一张照片
           </button>
         </div>
       )}
