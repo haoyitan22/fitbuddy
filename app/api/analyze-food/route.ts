@@ -4,14 +4,19 @@ import { NextRequest, NextResponse } from "next/server";
 import { findFood, nutritionOf, foodListForPrompt } from "@/lib/foods";
 import { redis } from "@/lib/redis";
 
-export const maxDuration = 30;
+// Opus answers take longer than the small models.
+export const maxDuration = 60;
 
-/** Photos and meal ideas: the mid-tier model, falling back to the fast one if it fails. Simple estimates: fast model. */
-const MODEL_VISION = "claude-sonnet-5-5";
-const MODEL_IDEAS = "claude-sonnet-5-5";
+/**
+ * Photos and meal ideas: Opus (best recognition and advice), falling back to Sonnet if a call fails.
+ * Simple estimates for hand-added foods: the fast model.
+ */
+const MODEL_VISION = "claude-opus-5-5";
+const MODEL_IDEAS = "claude-opus-5-5";
+const MODEL_FALLBACK = "claude-sonnet-5-5";
 const MODEL_FAST = "claude-haiku-4-5-20251001";
 /** Bump to drop cached photo results after changing the prompt or the food table. */
-const CACHE_VERSION = "v1";
+const CACHE_VERSION = "v2"; // v2: Opus
 const CACHE_DAYS = 30;
 
 interface Item {
@@ -74,8 +79,9 @@ async function ask(client: Anthropic, content: Anthropic.MessageParam["content"]
     response = await run(model);
   } catch (e) {
     if (model === MODEL_FAST) throw e;
-    console.error(`analyze-food: ${model} failed, falling back to ${MODEL_FAST}:`, e instanceof Error ? e.message : e);
-    response = await run(MODEL_FAST);
+    const fallback = model === MODEL_FALLBACK ? MODEL_FAST : MODEL_FALLBACK;
+    console.error(`analyze-food: ${model} failed, falling back to ${fallback}:`, e instanceof Error ? e.message : e);
+    response = await run(fallback);
   }
   const block = response.content.find(b => b.type === "text");
   return parseJson(block && block.type === "text" ? block.text : "");
