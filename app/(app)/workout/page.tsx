@@ -7,6 +7,7 @@ import type { Pet } from "@/lib/auth";
 import PetStage from "@/components/PetStage";
 import { getStreak, STREAK_CELEBRATE } from "@/lib/pets";
 import { earnOnce, COIN_RULES } from "@/lib/coins";
+import { dayKey } from "@/lib/date";
 
 type BodyPart = "full" | "abs" | "legs" | "arms";
 
@@ -55,12 +56,12 @@ function getWeekDates() {
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(mon);
     d.setDate(mon.getDate() + i);
-    return d.toISOString().slice(0, 10);
+    return dayKey(d);
   });
 }
 
 function todayKey() {
-  return new Date().toISOString().slice(0, 10);
+  return dayKey();
 }
 
 function getCheckedInDates(): string[] {

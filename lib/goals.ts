@@ -20,8 +20,10 @@ const ACTIVITY: Record<string, number> = { sedentary: 1.2, light: 1.375, moderat
 
 export function ageOf(birthday?: string): number | null {
   if (!birthday) return null;
-  const b = new Date(birthday);
-  if (isNaN(b.getTime())) return null;
+  // "YYYY-MM-DD" read as a local date (new Date("YYYY-MM-DD") would be UTC midnight).
+  const [y, mo, d] = birthday.slice(0, 10).split("-").map(Number);
+  const b = new Date(y, (mo || 1) - 1, d || 1);
+  if (!y || isNaN(b.getTime())) return null;
   const now = new Date();
   let a = now.getFullYear() - b.getFullYear();
   if (now < new Date(now.getFullYear(), b.getMonth(), b.getDate())) a--;

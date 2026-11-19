@@ -1,3 +1,4 @@
+import { dayKey } from "@/lib/date";
 /* ──────────────────────────────────────────────────────────────
    Coins: earned by healthy actions, spent in the pet shop.
    Stored with the shop state under fitbuddy_pet_store so the pet
@@ -45,7 +46,7 @@ export function saveStore(s: PetStore) {
 }
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  return dayKey();
 }
 
 type Log = { date: string; keys: string[] };

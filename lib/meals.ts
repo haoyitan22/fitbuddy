@@ -1,3 +1,4 @@
+import { dayKey } from "@/lib/date";
 export type MealType = "breakfast" | "lunch" | "dinner";
 
 /** One food in a meal, with the portion it was estimated for. */
@@ -31,7 +32,7 @@ export interface MealRecord {
 }
 
 function todayStr() {
-  return new Date().toISOString().slice(0, 10);
+  return dayKey();
 }
 
 function key(date: string) {

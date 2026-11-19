@@ -12,6 +12,7 @@ import PetStage from "@/components/PetStage";
 import { CALORIE_GOAL, getPetMood, type PetMood } from "@/lib/pets";
 import { getDailyTargets } from "@/lib/goals";
 import { earnOnce, COIN_RULES, loadStore } from "@/lib/coins";
+import { dayKey } from "@/lib/date";
 
 function getGreeting() {
   const h = new Date().getHours();
@@ -20,7 +21,7 @@ function getGreeting() {
   return "晚上好";
 }
 
-function todayKey() { return "fitbuddy_water_" + new Date().toISOString().slice(0, 10); }
+function todayKey() { return "fitbuddy_water_" + dayKey(); }
 function loadWater() { return typeof window === "undefined" ? 0 : Number(localStorage.getItem(todayKey()) ?? 0); }
 function saveWater(ml: number) { localStorage.setItem(todayKey(), String(ml)); }
 

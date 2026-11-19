@@ -1,6 +1,7 @@
 import { getUser, saveUserData } from "@/lib/auth";
 import { getMeals } from "@/lib/meals";
 import { getDailyTargets } from "@/lib/goals";
+import { dayKey } from "@/lib/date";
 
 /* ──────────────────────────────────────────────────────────────
    Daily weigh-ins and daily diet scores, from what the user
@@ -13,7 +14,7 @@ const WEIGHT_KEY = "fitbuddy_weight_log";
 export interface WeighIn { date: string; kg: number }
 
 function today() {
-  return new Date().toISOString().slice(0, 10);
+  return dayKey();
 }
 
 /** Oldest first. */
@@ -48,8 +49,8 @@ export function logWeight(kg: number, date = today()): WeighIn[] {
 /** Entries from the last `days` days (including today). */
 export function recentWeighIns(days = 14): WeighIn[] {
   const from = new Date();
-  from.setUTCDate(from.getUTCDate() - (days - 1));
-  const start = from.toISOString().slice(0, 10);
+  from.setDate(from.getDate() - (days - 1));
+  const start = dayKey(from);
   return getWeightLog().filter(w => w.date >= start);
 }
 
@@ -80,12 +81,12 @@ export function weekScores(): { date: string; label: string; score: number | nul
   const DAYS = ["一", "二", "三", "四", "五", "六", "日"];
   const now = new Date();
   const mon = new Date(now);
-  mon.setUTCDate(now.getUTCDate() - ((now.getUTCDay() + 6) % 7));
+  mon.setDate(now.getDate() - ((now.getDay() + 6) % 7));
   const t = today();
   return DAYS.map((d, i) => {
     const day = new Date(mon);
-    day.setUTCDate(mon.getUTCDate() + i);
-    const date = day.toISOString().slice(0, 10);
+    day.setDate(mon.getDate() + i);
+    const date = dayKey(day);
     return { date, label: `周${d}`, score: date <= t ? dayScore(date) : null };
   });
 }

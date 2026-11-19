@@ -5,6 +5,7 @@ import type { MealType } from "@/lib/meals";
 import { getUser } from "@/lib/auth";
 import { ageOf, getDietPrefs } from "@/lib/goals";
 import { fallbackIdeas, planNextMeal, type MealIdea, type Totals } from "@/lib/nutrition";
+import { dayKey } from "@/lib/date";
 
 const ink = "#3B1F5E", grey = "#9CA3AF", purple = "#C084FC";
 const CACHE_KEY = "fitbuddy_next_meal";
@@ -20,7 +21,7 @@ type Cached = { sig: string; ideas: MealIdea[]; budget: number | null; analysis:
 export default function NextMealCard({ mealType, totals, lastMeal }: { mealType: MealType; totals: Totals; lastMeal: string }) {
   const plan = planNextMeal(mealType, totals);
   const { targets, eaten } = plan;
-  const sig = [new Date().toISOString().slice(0, 10), mealType, targets.calories, targets.protein, eaten.calories, eaten.protein, eaten.fat].join("|");
+  const sig = [dayKey(), mealType, targets.calories, targets.protein, eaten.calories, eaten.protein, eaten.fat].join("|");
   const [data, setData] = useState<Cached | null>(null);
   const [loading, setLoading] = useState(false);
 

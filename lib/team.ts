@@ -1,4 +1,5 @@
 import type { UserProfile } from "@/lib/auth";
+import { dayKey } from "@/lib/date";
 
 /* ──────────────────────────────────────────────────────────────
    Teams. There is no server yet: a team lives in this browser only.
@@ -99,11 +100,11 @@ export function teamFromInvite(inv: Invite): TeamData {
 export function checkinsThisWeek(dates: string[]): number {
   const set = new Set(dates);
   const d = new Date();
-  const back = (d.getUTCDay() + 6) % 7; // days since Monday
+  const back = (d.getDay() + 6) % 7; // days since Monday
   let n = 0;
   for (let i = 0; i <= back; i++) {
-    if (set.has(d.toISOString().slice(0, 10))) n++;
-    d.setUTCDate(d.getUTCDate() - 1);
+    if (set.has(dayKey(d))) n++;
+    d.setDate(d.getDate() - 1);
   }
   return n;
 }

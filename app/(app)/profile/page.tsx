@@ -10,6 +10,7 @@ import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis,
   Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
+import { dayKey } from "@/lib/date";
 
 /* ── helpers ── */
 function daysSince(iso?: string) {
@@ -24,7 +25,7 @@ function getWeekCheckins() {
     mon.setDate(now.getDate() - ((now.getDay() + 6) % 7));
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(mon); d.setDate(mon.getDate() + i);
-      return d.toISOString().slice(0, 10);
+      return dayKey(d);
     }).filter(d => all.includes(d)).length;
   } catch { return 0; }
 }
@@ -45,11 +46,11 @@ const md = (date: string) => `${Number(date.slice(5, 7))}/${Number(date.slice(8,
 function goodDietStreak() {
   let n = 0;
   const d = new Date();
-  if (dayScore(d.toISOString().slice(0, 10)) === null) d.setUTCDate(d.getUTCDate() - 1);
+  if (dayScore(dayKey(d)) === null) d.setDate(d.getDate() - 1);
   for (let i = 0; i < 60; i++) {
-    const s = dayScore(d.toISOString().slice(0, 10));
+    const s = dayScore(dayKey(d));
     if (s === null || s < 80) break;
-    n++; d.setUTCDate(d.getUTCDate() - 1);
+    n++; d.setDate(d.getDate() - 1);
   }
   return n;
 }
@@ -228,7 +229,7 @@ export default function ProfilePage() {
   const journeyDays = daysSince(user?.petJoinDate);
   const scored   = scores.filter(d => d.score !== null);
   const avgScore = scored.length ? Math.round(scored.reduce((a,b)=>a+(b.score ?? 0),0)/scored.length) : 0;
-  const todayStr = new Date().toISOString().slice(0, 10);
+  const todayStr = dayKey();
   const loggedToday = weighIns.find(w => w.date === todayStr);
   const first = weighIns[0], last = weighIns[weighIns.length - 1];
   const change = weighIns.length >= 2 ? Math.round((last.kg - first.kg) * 10) / 10 : 0;

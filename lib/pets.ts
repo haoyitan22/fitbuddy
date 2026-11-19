@@ -1,6 +1,7 @@
 import type { Pet } from "@/lib/auth";
 import { getTodayTotals } from "@/lib/meals";
 import { getDailyTargets } from "@/lib/goals";
+import { dayKey } from "@/lib/date";
 
 /* ──────────────────────────────────────────────────────────────
    Pet art + pet state rules.
@@ -96,7 +97,7 @@ const CHECKIN_KEY = "fitbuddy_workout_checkins";
 
 /** Same date format the app already uses for check-ins and meals. */
 export function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
+  return dayKey();
 }
 
 export function getCheckinDates(): string[] {
@@ -109,9 +110,9 @@ export function getStreak(dates: string[] = getCheckinDates()): number {
   const set = new Set(dates);
   let n = 0;
   const d = new Date();
-  while (set.has(d.toISOString().slice(0, 10))) {
+  while (set.has(dayKey(d))) {
     n++;
-    d.setUTCDate(d.getUTCDate() - 1);
+    d.setDate(d.getDate() - 1);
   }
   return n;
 }

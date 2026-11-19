@@ -7,6 +7,7 @@ import PetStage, { type PetClip } from "@/components/PetStage";
 import PetAvatar from "@/components/PetAvatar";
 import { getPetMood, getStreak, STREAK_CELEBRATE, petKindOf, petWear, type PetMood } from "@/lib/pets";
 import { loadStore, saveStore, COIN_RULES, COIN_EVENT, START_COINS, type PetStore } from "@/lib/coins";
+import { dayKey } from "@/lib/date";
 
 function getDaysSince(isoDate: string): number {
   const join = new Date(isoDate);
@@ -24,7 +25,7 @@ function getWeekCheckinCount(): number {
     const weekDates = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(mon);
       d.setDate(mon.getDate() + i);
-      return d.toISOString().slice(0, 10);
+      return dayKey(d);
     });
     return weekDates.filter(d => dates.includes(d)).length;
   } catch { return 0; }
@@ -54,7 +55,7 @@ const SHOP_ITEMS: ShopItem[] = [
 
 const WATER_GOAL = 1800;
 function waterReachedToday(): boolean {
-  try { return Number(localStorage.getItem("fitbuddy_water_" + new Date().toISOString().slice(0, 10)) ?? 0) >= WATER_GOAL; }
+  try { return Number(localStorage.getItem("fitbuddy_water_" + dayKey()) ?? 0) >= WATER_GOAL; }
   catch { return false; }
 }
 
