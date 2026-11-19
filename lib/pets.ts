@@ -69,13 +69,18 @@ function animated(kind: PetKind): PetClips {
 
 /**
  * "Wearing" clips: the pet puts on / picks up a shop item, starting from its base still
- * and ending dressed. Keyed by shop item id. Only the panda has them so far.
+ * and ending dressed. Keyed by shop item id. A pet without a clip for its item shows the
+ * item as a badge instead. Files: /pets/<kind>/wear-<item>.mp4 and wear-<item>-end.webp.
  */
 export interface PetWear { clip: string; end: string }
+function wearClips(kind: PetKind, items: string[]): Record<string, PetWear> {
+  return Object.fromEntries(items.map(id => [id, { clip: `/pets/${kind}/wear-${id}.mp4`, end: `/pets/${kind}/wear-${id}-end.webp` }]));
+}
 const WEAR: Partial<Record<PetKind, Record<string, PetWear>>> = {
-  panda: Object.fromEntries(["dumbbells", "tumbler", "headband", "bandana"].map(id => [id, {
-    clip: `/pets/panda/wear-${id}.mp4`, end: `/pets/panda/wear-${id}-end.webp`,
-  }])),
+  panda: wearClips("panda", ["dumbbells", "tumbler", "headband", "bandana"]),
+  cat: wearClips("cat", ["dumbbells"]),
+  hamster: wearClips("hamster", ["dumbbells"]),
+  bear: wearClips("bear", ["dumbbells"]),
 };
 
 export function petWear(kind: PetKind | null, itemId?: string | null): PetWear | null {
