@@ -33,29 +33,42 @@ function num(v: unknown): number {
   return Number.isFinite(n) && n >= 0 ? Math.round(n * 10) / 10 : 0;
 }
 
+/** First field present among `keys` (the compact names the AI now uses, or the long ones). */
+function pick(a: Record<string, unknown>, ...keys: string[]): unknown {
+  for (const k of keys) if (a[k] !== undefined && a[k] !== null) return a[k];
+  return undefined;
+}
+
 /**
- * Turn the AI's answer into items. A food found in the reference table takes its
- * grams (count × standard portion) and nutrition from the table; anything else
- * keeps the AI's estimate and is marked estimated.
+ * Turn the AI's compact answer into full items.
+ *   table food:    { "ref": "米饭", "count": 1 }  (+ "name" when the photo calls it something else)
+ *   other food:    { "name": "孜然烤羊排", "unit": "块", "count": 2, "grams": 200, "kcal": 520, "p": 34, "c": 2, "f": 42 }
+ * A table food takes its unit, grams (count × standard portion) and nutrition from the
+ * table; anything else keeps the AI's estimate and is marked estimated. The result has
+ * the same shape as before, so the app and saved records are unaffected.
  */
 function toItems(raw: unknown): Item[] {
   if (!Array.isArray(raw)) return [];
   return raw
-    .filter(i => i && typeof i === "object" && typeof (i as { name?: unknown }).name === "string")
+    .filter(i => i && typeof i === "object")
     .map(i => {
       const a = i as Record<string, unknown>;
-      const name = String(a.name).trim().slice(0, 30);
+      const refName = typeof a.ref === "string" ? a.ref : "";
+      const ref = (refName && findFood(refName)) || (typeof a.name === "string" && findFood(a.name)) || null;
+      const name = String((typeof a.name === "string" && a.name.trim()) || refName || "").trim().slice(0, 30);
       const count = num(a.count) > 0 ? Math.min(99, Math.round(num(a.count) * 2) / 2) : 1;
       const aiUnit = typeof a.unit === "string" && a.unit.trim() ? a.unit.trim().slice(0, 2) : "";
-      const ref = (typeof a.ref === "string" && findFood(a.ref)) || findFood(name);
+      const aiGrams = num(a.grams);
       if (ref) {
-        // Same unit as the table → standard portion; otherwise trust the AI's grams.
-        const grams = !aiUnit || aiUnit === ref.unit ? count * ref.unitGrams : (num(a.grams) || count * ref.unitGrams);
-        return { name, unit: aiUnit || ref.unit, count, grams: Math.round(grams), ...nutritionOf(ref, grams), estimated: false };
+        // Counted in the table's unit → standard portion. If the AI used another unit and gave grams, trust those grams.
+        const sameUnit = !aiUnit || aiUnit === ref.unit;
+        const grams = sameUnit || !aiGrams ? count * ref.unitGrams : aiGrams;
+        return { name, unit: sameUnit ? ref.unit : aiUnit, count, grams: Math.round(grams), ...nutritionOf(ref, grams), estimated: false };
       }
       return {
-        name, unit: aiUnit || "份", count, grams: Math.round(num(a.grams) || 100),
-        calories: Math.round(num(a.calories)), protein: num(a.protein), carbs: num(a.carbs), fat: num(a.fat),
+        name, unit: aiUnit || "份", count, grams: Math.round(aiGrams || 100),
+        calories: Math.round(num(pick(a, "kcal", "calories"))),
+        protein: num(pick(a, "p", "protein")), carbs: num(pick(a, "c", "carbs")), fat: num(pick(a, "f", "fat")),
         estimated: true,
       };
     })
@@ -87,13 +100,14 @@ async function ask(client: Anthropic, content: Anthropic.MessageParam["content"]
   return parseJson(block && block.type === "text" ? block.text : "");
 }
 
-/** What the AI is asked for: names (matched to the table when possible) and portions. */
-const ITEM_SCHEMA = `{"name": "食物名", "ref": "对应参考表里的名字，没有就填 null", "unit": "单位", "count": 数量, "grams": 总克数, "calories": kcal, "protein": 克, "carbs": 克, "fat": 克}`;
+/** What the AI writes back: as little as possible (output length is most of the wait). */
+const ITEM_SCHEMA = `表里有的：{"ref": "表里的名字", "count": 数量}（照片里叫法不同时再加 "name"）；表里没有的：{"name": "食物名", "unit": "单位", "count": 数量, "grams": 总克数, "kcal": 热量, "p": 蛋白质克, "c": 碳水克, "f": 脂肪克}`;
 const TABLE_RULES = `参考表（名字(单位)）：${foodListForPrompt()}
 规则：
-1. 能对应参考表的食物，ref 填表里的名字，unit 用表里的单位，只需要数清 count；grams 和营养可以填 0，系统会按标准份量计算。
-2. 参考表里没有的食物，ref 填 null，按常见做法估算 grams 和营养成分（营养对应总克数）。
-3. ${UNIT_RULES}`;
+1. 表里有的食物：ref 写表里的名字，按表里括号中的单位数 count，不要写其他字段，系统会按标准份量计算。
+2. 表里没有的食物：写 name、unit、count，并按常见做法估算 grams 和营养（营养对应总克数）。
+3. ${UNIT_RULES}
+4. 输出紧凑 JSON，不要换行和多余空格。`;
 
 const sumOf = (items: Item[], k: "calories" | "protein" | "carbs" | "fat") => Math.round(items.reduce((s, i) => s + i[k], 0));
 
@@ -124,7 +138,7 @@ export async function POST(req: NextRequest) {
       const data = await ask(client, `请估算下面每种食物在给定数量下的重量和营养成分（按常见中式做法和常见分量估算）：
 ${wanted.map((i: { name: string; count: number; unit: string }) => `${i.name}：${i.count} ${i.unit}`).join("\n")}
 unit 和 count 保持给定的值。只返回如下 JSON，不要任何额外文字：
-{ "items": [ ${ITEM_SCHEMA} ] }
+{"items":[…]}，每一项的写法——${ITEM_SCHEMA}
 ${TABLE_RULES}`);
       const items = toItems(data?.items);
       if (!items.length) return NextResponse.json({ error: "估算失败" }, { status: 500 });
@@ -167,10 +181,11 @@ ${meals || "- 暂无"}
    3 个搭配的主食和做法要互不相同（比如一个米饭、一个面、一个粥或杂粮），蛋白质来源也要不同（比如一个鱼虾、一个鸡肉或牛肉、一个蛋或豆制品）。
 ${exclude.length ? `   用户刚看过并且不想吃这些：${exclude.join("；")}。这次换成完全不同的菜（换主要食材和做法，不要只换配菜）。\n` : ""}${recent.length ? `   最近几天已经推荐过：${recent.join("；")}。尽量不要重复这些菜。\n` : ""}   蛋白质吃到或超过目标是好事，不要当成问题；需要控制的是热量和脂肪。
 3. 根据今天吃过的东西避开重复，按偏好调整，结合已摄入的脂肪和蛋白质情况说明理由。
-4. analysis：一句话点评今天到目前的摄入（具体到数字，25 字以内，语气友好，不要用“严重”这类吓人的词）。
+4. analysis：一句话点评今天到目前的摄入（具体到数字，20 字以内，语气友好，不要用“严重”这类吓人的词）。
 
 只返回如下 JSON，不要任何额外文字：
-{ "budget": 整数, "analysis": "…", "ideas": [ { "name": "菜名 + 分量（20字以内）", "parts": [ { "ref": "参考表里的名字", "count": 数量 } ], "why": "一句话理由（20字以内）" } ], "tip": "一句温柔的鼓励（20字以内）" }
+{"budget":整数,"analysis":"…","ideas":[{"name":"菜名+分量（18字以内）","parts":[["参考表里的名字",数量]],"why":"理由（15字以内）"}],"tip":"一句鼓励（15字以内）"}
+输出紧凑 JSON，不要换行和多余空格；不用写热量和蛋白质，系统会算。
 
 参考表（名字(单位)）：${foodListForPrompt()}`, 1200, MODEL_IDEAS, 0.8);
       const ideas = Array.isArray(data?.ideas)
@@ -179,8 +194,12 @@ ${exclude.length ? `   用户刚看过并且不想吃这些：${exclude.join("�
             .slice(0, 3)
             .map(i => {
               // Calories and protein come from the reference table, not from the model.
-              const parts = (Array.isArray(i.parts) ? i.parts : []) as { ref?: unknown; count?: unknown }[];
-              const refs = parts.map(pt => ({ f: typeof pt?.ref === "string" ? findFood(pt.ref) : null, count: num(pt?.count) || 1 }));
+              // parts: [["清蒸鱼", 1], ["米饭", 0.5]] (compact) or [{ ref, count }]
+              const parts = (Array.isArray(i.parts) ? i.parts : []) as unknown[];
+              const refs = parts.map(pt => {
+                const [r, n] = Array.isArray(pt) ? pt : [(pt as { ref?: unknown })?.ref, (pt as { count?: unknown })?.count];
+                return { f: typeof r === "string" ? findFood(r) : null, count: num(n) || 1 };
+              });
               const allKnown = refs.length > 0 && refs.every(r => r.f);
               const n = allKnown
                 ? refs.reduce((acc, r) => { const v = nutritionOf(r.f!, r.count * r.f!.unitGrams); return { kcal: acc.kcal + v.calories, protein: acc.protein + v.protein }; }, { kcal: 0, protein: 0 })
@@ -218,7 +237,7 @@ ${exclude.length ? `   用户刚看过并且不想吃这些：${exclude.join("�
       { type: "text", text: `请识别这张照片里的每一种食物，并数清分量。同类小份可以合并（例如“烤肉串 6 串”）。最多 8 项。
 ${TABLE_RULES}
 只返回如下 JSON，不要任何额外文字：
-{ "items": [ ${ITEM_SCHEMA} ] }
+{"items":[…]}，每一项的写法——${ITEM_SCHEMA}
 如果看不清或不是食物，返回 { "error": "无法识别食物" }` },
     ], 1500, MODEL_VISION);
     if (data?.error) return NextResponse.json({ error: String(data.error) }, { status: 422 });
