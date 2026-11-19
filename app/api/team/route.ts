@@ -1,4 +1,5 @@
-import { Redis } from "@upstash/redis";
+import type { Redis } from "@upstash/redis";
+import { redis } from "@/lib/redis";
 import { NextRequest, NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -21,11 +22,6 @@ const TEAM_SIZE = 6;
 const FEED_KEEP = 30;
 const GOALS = ["fat", "checkin", "diet"];
 
-function redis(): Redis | null {
-  const url = process.env.KV_REST_API_URL ?? process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.KV_REST_API_TOKEN ?? process.env.UPSTASH_REDIS_REST_TOKEN;
-  return url && token ? new Redis({ url, token }) : null;
-}
 
 interface Team { code: string; name: string; goal: string; createdAt: string; leaderId: string }
 interface Member { id: string; name: string; pet: string; petName: string; joinedAt: string; checkins: string[] }

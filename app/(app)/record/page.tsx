@@ -11,6 +11,33 @@ import { getUser } from "@/lib/auth";
 import { shareActivity } from "@/lib/team";
 import NextMealCard from "@/components/NextMealCard";
 
+/* ── same photo → same result, without asking the AI again ── */
+const PHOTO_CACHE_KEY = "fitbuddy_food_cache";
+const PHOTO_CACHE_MAX = 30;
+
+async function hashFile(file: File): Promise<string | null> {
+  try {
+    const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
+    return Array.from(new Uint8Array(digest), b => b.toString(16).padStart(2, "0")).join("");
+  } catch { return null; }
+}
+
+function readPhotoCache(hash: string): FoodItem[] | null {
+  try {
+    const c = JSON.parse(localStorage.getItem(PHOTO_CACHE_KEY) || "{}") as Record<string, { items: FoodItem[]; at: number }>;
+    return c[hash]?.items?.length ? c[hash].items : null;
+  } catch { return null; }
+}
+
+function writePhotoCache(hash: string, items: FoodItem[]) {
+  try {
+    const c = JSON.parse(localStorage.getItem(PHOTO_CACHE_KEY) || "{}") as Record<string, { items: FoodItem[]; at: number }>;
+    c[hash] = { items, at: Date.now() };
+    const keep = Object.entries(c).sort((a, b) => b[1].at - a[1].at).slice(0, PHOTO_CACHE_MAX);
+    localStorage.setItem(PHOTO_CACHE_KEY, JSON.stringify(Object.fromEntries(keep)));
+  } catch { /* storage full: skip caching */ }
+}
+
 export default function RecordPage() {
   const router = useRouter();
   const fileRef = useRef<HTMLInputElement>(null);
@@ -19,6 +46,8 @@ export default function RecordPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [imageBase64, setImageBase64] = useState<string | null>(null);
   const [mimeType, setMimeType] = useState<string>("image/jpeg");
+  // Fingerprint of the chosen photo file: the same photo reuses its earlier result.
+  const [photoHash, setPhotoHash] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState(false);
   // The meal's foods, editable (fresh analysis or a saved record).
   const [items, setItems] = useState<FoodItem[] | null>(null);
@@ -88,6 +117,8 @@ export default function RecordPage() {
     };
     reader.onerror = () => setError("照片读取失败，请重新选择");
     reader.readAsDataURL(file);
+    setPhotoHash(null);
+    hashFile(file).then(setPhotoHash);
     // Let the same photo be picked again later.
     e.target.value = "";
   }
@@ -95,6 +126,8 @@ export default function RecordPage() {
   async function handleAnalyze() {
     if (!imageBase64) return;
     setAnalyzing(true); setError(""); setItems(null);
+    const cached = photoHash ? readPhotoCache(photoHash) : null;
+    if (cached) { setItems(cached); setAnalyzing(false); return; }
     try {
       const res = await fetch("/api/analyze-food", {
         method: "POST",
@@ -104,6 +137,7 @@ export default function RecordPage() {
       const data = await res.json();
       if (!res.ok || data.error) { setError(data.error || `服务器错误 (${res.status})`); return; }
       setItems(itemsOf(data));
+      if (photoHash) writePhotoCache(photoHash, itemsOf(data));
     } catch {
       setError("请求失败，请检查网络后重试");
     } finally {

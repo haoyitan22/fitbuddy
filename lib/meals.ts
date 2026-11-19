@@ -10,6 +10,8 @@ export interface FoodItem {
   unit?: string;
   /** How many units; grams / count is one unit's weight. */
   count?: number;
+  /** Nutrition guessed by the AI because the food is not in the reference table (lib/foods). */
+  estimated?: boolean;
   calories: number;
   protein: number;
   carbs: number;

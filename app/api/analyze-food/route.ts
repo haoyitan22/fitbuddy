@@ -1,32 +1,57 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
+import { findFood, nutritionOf, foodListForPrompt } from "@/lib/foods";
+import { redis } from "@/lib/redis";
 
 export const maxDuration = 30;
 
-const MODEL = "claude-haiku-4-5-20251001";
+/** Photos: the stronger vision model, falling back to the fast one if it fails. Text tasks: fast model. */
+const MODEL_VISION = "claude-sonnet-5-5";
+const MODEL_FAST = "claude-haiku-4-5-20251001";
+/** Bump to drop cached photo results after changing the prompt or the food table. */
+const CACHE_VERSION = "v1";
+const CACHE_DAYS = 30;
 
-interface Item { name: string; grams: number; unit: string; count: number; calories: number; protein: number; carbs: number; fat: number }
+interface Item {
+  name: string; grams: number; unit: string; count: number;
+  calories: number; protein: number; carbs: number; fat: number;
+  /** true when the food is not in the reference table and the AI guessed its nutrition */
+  estimated: boolean;
+}
 
-const ITEM_SCHEMA = `{"name": "食材名", "unit": "生活单位", "count": 数量, "grams": 总克数, "calories": kcal, "protein": 克, "carbs": 克, "fat": 克}`;
-
-/** How to pick unit/count, shared by the photo and estimate prompts. */
-const UNIT_RULES = `unit 用普通人数得清的生活单位：能一个个数的用 串/只/个/块/片/根（如烤肉串 6 串、鸡翅 4 只、虾 8 只、鸡蛋 1 个），米饭面条粥用 碗（可以是 0.5），饮料用 杯，炒菜、沙拉、拼盘等数不清的用 份（可以是 0.5）。
-count 是数量，grams 是这些数量加起来的总克数，营养成分对应总克数。`;
+const UNIT_RULES = `unit 用普通人数得清的生活单位：能一个个数的用 串/只/个/块/片/根，米饭面条粥用 碗，饮料用 杯，炒菜、拼盘等数不清的用 份。count 是数量，可以是 0.5 的倍数。`;
 
 function num(v: unknown): number {
   const n = Number(v);
   return Number.isFinite(n) && n >= 0 ? Math.round(n * 10) / 10 : 0;
 }
 
-function cleanItems(raw: unknown): Item[] {
+/**
+ * Turn the AI's answer into items. A food found in the reference table takes its
+ * grams (count × standard portion) and nutrition from the table; anything else
+ * keeps the AI's estimate and is marked estimated.
+ */
+function toItems(raw: unknown): Item[] {
   if (!Array.isArray(raw)) return [];
   return raw
-    .filter(i => i && typeof i === "object" && typeof (i as Item).name === "string")
+    .filter(i => i && typeof i === "object" && typeof (i as { name?: unknown }).name === "string")
     .map(i => {
-      const it = i as Item;
-      const unit = typeof it.unit === "string" && it.unit.trim() ? it.unit.trim().slice(0, 2) : "份";
-      const count = num(it.count) > 0 ? Math.min(99, Math.round(num(it.count) * 2) / 2) : 1;
-      return { name: it.name.trim().slice(0, 30), unit, count, grams: num(it.grams) || 100, calories: num(it.calories), protein: num(it.protein), carbs: num(it.carbs), fat: num(it.fat) };
+      const a = i as Record<string, unknown>;
+      const name = String(a.name).trim().slice(0, 30);
+      const count = num(a.count) > 0 ? Math.min(99, Math.round(num(a.count) * 2) / 2) : 1;
+      const aiUnit = typeof a.unit === "string" && a.unit.trim() ? a.unit.trim().slice(0, 2) : "";
+      const ref = (typeof a.ref === "string" && findFood(a.ref)) || findFood(name);
+      if (ref) {
+        // Same unit as the table → standard portion; otherwise trust the AI's grams.
+        const grams = !aiUnit || aiUnit === ref.unit ? count * ref.unitGrams : (num(a.grams) || count * ref.unitGrams);
+        return { name, unit: aiUnit || ref.unit, count, grams: Math.round(grams), ...nutritionOf(ref, grams), estimated: false };
+      }
+      return {
+        name, unit: aiUnit || "份", count, grams: Math.round(num(a.grams) || 100),
+        calories: Math.round(num(a.calories)), protein: num(a.protein), carbs: num(a.carbs), fat: num(a.fat),
+        estimated: true,
+      };
     })
     .filter(i => i.name);
 }
@@ -37,15 +62,34 @@ function parseJson(text: string): Record<string, unknown> | null {
   try { return JSON.parse(m[0]); } catch { return null; }
 }
 
-async function ask(client: Anthropic, content: Anthropic.MessageParam["content"], maxTokens = 1024) {
-  const response = await client.messages.create({ model: MODEL, max_tokens: maxTokens, messages: [{ role: "user", content }] });
+/** temperature 0: the same input gives the same answer as far as the model allows. */
+async function ask(client: Anthropic, content: Anthropic.MessageParam["content"], maxTokens = 1024, model = MODEL_FAST) {
+  const run = (m: string) => client.messages.create({ model: m, max_tokens: maxTokens, temperature: 0, messages: [{ role: "user", content }] });
+  let response;
+  try {
+    response = await run(model);
+  } catch (e) {
+    if (model === MODEL_FAST) throw e;
+    console.error(`analyze-food: ${model} failed, falling back to ${MODEL_FAST}:`, e instanceof Error ? e.message : e);
+    response = await run(MODEL_FAST);
+  }
   const block = response.content.find(b => b.type === "text");
   return parseJson(block && block.type === "text" ? block.text : "");
 }
 
+/** What the AI is asked for: names (matched to the table when possible) and portions. */
+const ITEM_SCHEMA = `{"name": "食物名", "ref": "对应参考表里的名字，没有就填 null", "unit": "单位", "count": 数量, "grams": 总克数, "calories": kcal, "protein": 克, "carbs": 克, "fat": 克}`;
+const TABLE_RULES = `参考表（名字(单位)）：${foodListForPrompt()}
+规则：
+1. 能对应参考表的食物，ref 填表里的名字，unit 用表里的单位，只需要数清 count；grams 和营养可以填 0，系统会按标准份量计算。
+2. 参考表里没有的食物，ref 填 null，按常见做法估算 grams 和营养成分（营养对应总克数）。
+3. ${UNIT_RULES}`;
+
+const sumOf = (items: Item[], k: "calories" | "protein" | "carbs" | "fat") => Math.round(items.reduce((s, i) => s + i[k], 0));
+
 /**
  * POST /api/analyze-food
- *   { imageBase64, mimeType }                    → { items, foods, calories, protein, carbs, fat }
+ *   { imageBase64, mimeType }                    → { items, foods, calories, protein, carbs, fat, cached? }
  *   { mode: "estimate", items: [{name, count, unit}] } → { items }   (nutrition for hand-added foods)
  *   { mode: "suggest", targets, eaten, meals, exclude?, … } → { budget, analysis, ideas: [{name, kcal, protein, why}], tip }
  */
@@ -58,18 +102,21 @@ export async function POST(req: NextRequest) {
 
     /* ── nutrition for foods the user typed in ── */
     if (body.mode === "estimate") {
-      const wanted = (Array.isArray(body.items) ? body.items : [])
-        .slice(0, 10)
-        .map((i: { name?: unknown; count?: unknown; unit?: unknown }) =>
-          `${String(i.name ?? "").slice(0, 30)}：${num(i.count) || 1} ${String(i.unit ?? "份").slice(0, 2)}`)
-        .join("\n");
-      if (!wanted) return NextResponse.json({ error: "No items" }, { status: 400 });
+      const wanted = (Array.isArray(body.items) ? body.items : []).slice(0, 10)
+        .map((i: { name?: unknown; count?: unknown; unit?: unknown }) => ({
+          name: String(i.name ?? "").trim().slice(0, 30), count: num(i.count) || 1, unit: String(i.unit ?? "份").slice(0, 2),
+        }))
+        .filter((i: { name: string }) => i.name);
+      if (!wanted.length) return NextResponse.json({ error: "No items" }, { status: 400 });
+      // Foods in the table need no AI call at all.
+      const known = wanted.every((i: { name: string; unit: string }) => findFood(i.name)?.unit === i.unit);
+      if (known) return NextResponse.json({ items: toItems(wanted) });
       const data = await ask(client, `请估算下面每种食物在给定数量下的重量和营养成分（按常见中式做法和常见分量估算）：
-${wanted}
-${UNIT_RULES}
+${wanted.map((i: { name: string; count: number; unit: string }) => `${i.name}：${i.count} ${i.unit}`).join("\n")}
 unit 和 count 保持给定的值。只返回如下 JSON，不要任何额外文字：
-{ "items": [ ${ITEM_SCHEMA} ] }`);
-      const items = cleanItems(data?.items);
+{ "items": [ ${ITEM_SCHEMA} ] }
+${TABLE_RULES}`);
+      const items = toItems(data?.items);
       if (!items.length) return NextResponse.json({ error: "估算失败" }, { status: 500 });
       return NextResponse.json({ items });
     }
@@ -130,25 +177,37 @@ ${exclude.length ? `用户已经看过并且不想吃这些：${exclude.join("�
     /* ── recognise a photo, food by food ── */
     const { imageBase64, mimeType } = body;
     if (!imageBase64) return NextResponse.json({ error: "No image" }, { status: 400 });
+
+    // The same photo always gets the same answer (and costs one AI call).
+    const db = redis();
+    const cacheKey = `food:${CACHE_VERSION}:${createHash("sha256").update(String(imageBase64)).digest("hex")}`;
+    if (db) {
+      try {
+        const hit = await db.get(cacheKey);
+        if (hit) return NextResponse.json({ ...(typeof hit === "string" ? JSON.parse(hit) : hit), cached: true });
+      } catch (e) { console.error("analyze-food cache read", e); }
+    }
+
     const data = await ask(client, [
       { type: "image", source: { type: "base64", media_type: mimeType ?? "image/jpeg", data: imageBase64 } },
-      { type: "text", text: `请分析这张食物图片，逐一识别每种食物，估算每种食物的可食用重量和营养成分。
-同类小份可以合并（例如“烤肉串”）。最多 8 项。
-${UNIT_RULES}
+      { type: "text", text: `请识别这张照片里的每一种食物，并数清分量。同类小份可以合并（例如“烤肉串 6 串”）。最多 8 项。
+${TABLE_RULES}
 只返回如下 JSON，不要任何额外文字：
 { "items": [ ${ITEM_SCHEMA} ] }
-单位：grams=克，calories=kcal，protein/carbs/fat=克，全部为数字。
 如果看不清或不是食物，返回 { "error": "无法识别食物" }` },
-    ]);
+    ], 1500, MODEL_VISION);
     if (data?.error) return NextResponse.json({ error: String(data.error) }, { status: 422 });
-    const items = cleanItems(data?.items);
+    const items = toItems(data?.items);
     if (!items.length) return NextResponse.json({ error: "解析失败" }, { status: 500 });
-    const sum = (k: "calories" | "protein" | "carbs" | "fat") => Math.round(items.reduce((s, i) => s + i[k], 0));
-    return NextResponse.json({
+    const result = {
       items,
       foods: items.map(i => i.name).join("、"),
-      calories: sum("calories"), protein: sum("protein"), carbs: sum("carbs"), fat: sum("fat"),
-    });
+      calories: sumOf(items, "calories"), protein: sumOf(items, "protein"), carbs: sumOf(items, "carbs"), fat: sumOf(items, "fat"),
+    };
+    if (db) {
+      try { await db.set(cacheKey, JSON.stringify(result), { ex: CACHE_DAYS * 86400 }); } catch (e) { console.error("analyze-food cache write", e); }
+    }
+    return NextResponse.json(result);
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error("analyze-food error:", msg);

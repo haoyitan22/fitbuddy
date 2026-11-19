@@ -116,6 +116,9 @@ export default function MealEditor({ items, onChange }: { items: FoodItem[]; onC
                   <p style={{ margin: 0, fontSize: 14, color: ink, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</p>
                   <p style={{ margin: "2px 0 0", fontSize: 12, color: grey }}>
                     <span style={{ color: purple, fontWeight: 600 }}>{Math.round(it.calories)} kcal</span>
+                    {it.estimated && (
+                      <span title="这道菜不在营养参考表里，热量是 AI 估算的" style={{ marginLeft: 6, fontSize: 10, color: "#B45309", background: "#FEF3C7", borderRadius: 6, padding: "1px 5px", fontWeight: 600 }}>估算</span>
+                    )}
                     <button onClick={() => setGramsOpen(gramsOpen === i ? null : i)} aria-label={`${it.name} 按克数修改`}
                       style={{ marginLeft: 6, padding: 0, border: "none", background: "none", color: "#C4B5D0", fontSize: 11, cursor: "pointer" }}>
                       · 约 {Math.round(it.grams)}g
