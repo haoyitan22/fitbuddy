@@ -72,6 +72,8 @@
 .rg-chips { display: flex; flex-wrap: wrap; gap: 8px; }
 .rg-chip { border: 1.5px solid var(--line); background: #fff; border-radius: 999px; padding: 8px 14px; font-size: 13.5px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .rg-chip[aria-pressed="true"] { background: var(--acc); border-color: var(--acc); color: #fff; font-weight: 500; }
+.rg-refresh { display: inline-flex; align-items: center; gap: 4px; border: 1.5px solid var(--line); background: #fff; color: var(--acc) !important; border-radius: 999px; padding: 5px 12px; font-size: 12px !important; font-weight: 600; cursor: pointer; }
+.rg-refresh:active svg { transform: rotate(-90deg); transition: transform .2s; }
 .rg-label { margin: 0; font-size: 13px; font-weight: 500; color: var(--sub); }
 
 /* gender */

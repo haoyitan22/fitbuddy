@@ -27,10 +27,21 @@ const PETS: { kind: Kind; trait: string; pet: Pet }[] = [
   { kind: "fox", trait: "机灵小俏皮", pet: { emoji: "🦊", species: "狐狸", name: "小狐", desc: "机灵可爱，和你一起闪闪发光" } },
   { kind: "bear", trait: "稳重又暖心", pet: { emoji: "🐻", species: "棕熊", name: "肉桂", desc: "稳重暖心，默默支持你" } },
 ];
+/** Name ideas: ones that suit each pet, plus a shared pool; shown five at a time with 换一批. */
 const NAME_IDEAS: Record<Kind, string[]> = {
-  panda: ["团团", "圆滚滚", "阿福", "黑白配"], cat: ["小橘", "咪咪", "芒果", "布丁"],
-  hamster: ["汤圆", "瓜子", "毛球", "糯米"], fox: ["阿狸", "火火", "柿子", "小枫"], bear: ["可可", "熊熊", "布朗", "栗子"],
+  panda: ["团团", "圆圆", "圆滚滚", "阿福", "黑白配", "墩墩", "竹子", "笋笋", "滚滚", "芝麻汤圆", "奥利奥", "胖胖", "饭团", "小黑眼圈"],
+  cat: ["小橘", "咪咪", "芒果", "布丁", "橘座", "蛋黄", "胡萝卜", "南瓜", "大橘", "喵酱", "柚子", "鱼丸", "金桔", "小老虎"],
+  hamster: ["汤圆", "瓜子", "毛球", "糯米", "豆包", "花生", "仓仓", "米团", "奶糖", "鼓鼓", "松饼", "小圆", "栗子球", "腮腮"],
+  fox: ["阿狸", "火火", "柿子", "小枫", "红豆", "橙子", "小火苗", "狐宝", "枫糖", "丹丹", "糖葫芦", "辣椒", "狐小桃", "落叶"],
+  bear: ["可可", "熊熊", "布朗", "栗子", "巧克力", "摩卡", "咖啡豆", "大福", "憨憨", "蜂蜜", "拿铁", "黑糖", "肉松", "卡布"],
 };
+const SHARED_NAMES = ["小福星", "阿乐", "嘟嘟", "球球", "年糕", "麻薯", "奶盖", "布丁头", "元宝", "七七", "暖暖", "甜甜", "开心果", "小确幸", "棉花糖", "皮皮"];
+const IDEAS_PER_BATCH = 5;
+function shuffled<T>(list: T[]): T[] {
+  const a = [...list];
+  for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; }
+  return a;
+}
 /** Which of the nine small pet pictures each step shows next to its question. */
 const BADGE: Record<number, number> = { 3: 1, 4: 2, 5: 3, 6: 4, 7: 5, 8: 6, 9: 7, 11: 8, 12: 9 };
 
@@ -103,6 +114,8 @@ export default function RegisterFlow() {
   const [ready, setReady] = useState(false);
   const [error, setError] = useState("");
   const [agree, setAgree] = useState(false);
+  const [ideaOrder, setIdeaOrder] = useState<string[]>([]);
+  const [ideaPage, setIdeaPage] = useState(0);
 
   // resume a half-finished registration after a reload
   useEffect(() => {
@@ -192,7 +205,7 @@ export default function RegisterFlow() {
   if (step === 1) {
     const card = (p: typeof PETS[number]) => (
       <button type="button" key={p.kind} className="rg-pet" aria-pressed={form.kind === p.kind}
-        onClick={() => setForm(f => ({ ...f, kind: p.kind, petName: f.kind === p.kind ? f.petName : "" }))}>
+        onClick={() => { if (form.kind !== p.kind) { setIdeaOrder([]); setIdeaPage(0); } setForm(f => ({ ...f, kind: p.kind, petName: f.kind === p.kind ? f.petName : "" })); }}>
         {form.kind === p.kind && <em><Heart size={11} color="#fff" />想领养</em>}
         <img src={`/register/pets/${p.kind}.webp`} alt="" />
         <b>{p.pet.name}</b><span>{p.trait}</span>
@@ -219,9 +232,19 @@ export default function RegisterFlow() {
         <img className="rg-big" src={`/register/pets/${pet.kind}.webp`} alt={pet.pet.name} />
         <input id="rg-petname" className="rg-input name" maxLength={10} value={form.petName} placeholder={pet.pet.name}
           onChange={e => set("petName", e.target.value)} aria-label="宠物的名字" />
-        <p className="rg-label" style={{ alignSelf: "stretch" }}>换个灵感</p>
-        <div className="rg-chips" style={{ alignSelf: "stretch" }}>
-          {[pet.pet.name, ...NAME_IDEAS[pet.kind]].map(n => (
+        <div className="rg-row" style={{ alignSelf: "stretch" }}>
+          <p className="rg-label">换个灵感</p>
+          <button type="button" className="rg-refresh" onClick={() => {
+            const pages = Math.floor(ideaOrder.length / IDEAS_PER_BATCH);
+            if (ideaPage + 1 >= pages) { setIdeaOrder(shuffled([...NAME_IDEAS[pet.kind], ...SHARED_NAMES])); setIdeaPage(0); }
+            else setIdeaPage(ideaPage + 1);
+          }}>
+            <svg aria-hidden="true" width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M20 12a8 8 0 1 1-2.3-5.6M20 4v4h-4" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" /></svg>
+            换一批
+          </button>
+        </div>
+        <div className="rg-chips" style={{ alignSelf: "stretch" }} aria-live="polite">
+          {(ideaOrder.length ? ideaOrder.slice(ideaPage * IDEAS_PER_BATCH, (ideaPage + 1) * IDEAS_PER_BATCH) : [pet.pet.name, ...NAME_IDEAS[pet.kind].slice(0, IDEAS_PER_BATCH - 1)]).map(n => (
             <button type="button" key={n} className="rg-chip" aria-pressed={shownName === n} onClick={() => set("petName", n)}>{n}</button>
           ))}
         </div>
