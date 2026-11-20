@@ -15,13 +15,15 @@ export const TILE = "#FFF7F1";
  * with the page title above it. Content goes into <Sheet> below.
  */
 export default function PetHero({
-  title, sub, right, pet, petName, say, side = "right", height = 236, size = 160, children,
+  title, sub, right, pet, petName, pose, say, side = "right", height = 236, size = 160, children,
 }: {
   title: string;
   sub?: string;
   right?: ReactNode;
   pet?: Partial<Pet> | string | null;
   petName?: string;
+  /** Pose from the 九宫格 set (1–9): 4 headband, 7 food bowl, 8 star card, 9 notebook… */
+  pose?: number;
   /** What the pet says. */
   say?: ReactNode;
   /** Which side the pet stands on (the bubble takes the other side). */
@@ -50,11 +52,11 @@ export default function PetHero({
           {kind && (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={`/register/pets/${kind}.webp`}
+              src={pose ? `/register/poses/${kind}-${pose}.webp` : `/register/pets/${kind}.webp`}
               alt={petName ?? "宠物"}
               width={size} height={size}
               className="pet-breathe"
-              style={{ position: "absolute", left: "50%", bottom: 6, width: size, height: size, marginLeft: -size / 2 + petX, objectFit: "contain", zIndex: 1 }}
+              style={{ position: "absolute", left: "50%", bottom: pose ? -26 : 6, width: size, height: size, marginLeft: -size / 2 + petX, objectFit: "contain", zIndex: 1 }}
             />
           )}
           {say && (

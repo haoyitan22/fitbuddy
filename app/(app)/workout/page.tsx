@@ -91,6 +91,7 @@ export default function WorkoutPage() {
   const [overlayClip, setOverlayClip] = useState<"sport" | "celebrate">("sport");
   const [streakDays, setStreakDays] = useState(0);
   const [petName, setPetName] = useState("宠物");
+  const [length, setLength] = useState("all");
   const [completedVideos, setCompletedVideos] = useState<Set<string>>(new Set());
 
   useEffect(() => {
@@ -176,7 +177,7 @@ export default function WorkoutPage() {
       <PetHero
         title="今日运动"
         right={<span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 999, background: "#fff", fontSize: 12, fontWeight: 700, color: ACC, flexShrink: 0 }}>本周打卡 {weekCheckins} 天</span>}
-        pet={pet} petName={petName} side="left"
+        pet={pet} petName={petName} pose={4} side="left"
         say={checkedIn ? "今天已经打卡啦，你真棒！明天继续～" : `今天练${BODY_PARTS.find(b => b.key === selected)?.label ?? "一下"}好不好？练完打卡我会换上运动装！`}
       />
       <Sheet>
@@ -197,26 +198,46 @@ export default function WorkoutPage() {
         </div>
 
         <H2>今天练哪里</H2>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {BODY_PARTS.map(bp => {
-            const on = selected === bp.key;
+        {(() => {
+          const part = BODY_PARTS.find(b => b.key === selected)!;
+          const vids = VIDEOS[selected];
+          const mins = vids.map(v => parseInt(v.duration)).filter(n => n > 0);
+          return (
+            <div style={{ display: "flex", alignItems: "center", gap: 12, padding: 16, borderRadius: 22, background: CTA, color: "#fff", boxShadow: "0 8px 18px rgba(255,122,69,0.28)" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <span style={{ display: "inline-block", padding: "1px 8px", borderRadius: 999, background: "#fff", color: ACC, fontSize: 10.5, fontWeight: 700 }}>{petName}推荐</span>
+                <p style={{ margin: "4px 0 2px", fontFamily: "'ZCOOL KuaiLe', system-ui, sans-serif", fontSize: 22 }}>{part.emoji} {part.label}</p>
+                <p style={{ margin: 0, fontSize: 12 }}>{vids.length} 个跟练视频{mins.length ? ` · ${Math.min(...mins)}–${Math.max(...mins)} 分钟` : ""}</p>
+              </div>
+              <a href="#videos" aria-label="去跟练" style={{ width: 48, height: 48, borderRadius: 24, background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={ACC} strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+              </a>
+            </div>
+          );
+        })()}
+        <div style={{ display: "flex", gap: 8 }}>
+          {BODY_PARTS.filter(b => b.key !== selected).map(bp => (
+            <button key={bp.key} type="button" onClick={() => { setSelected(bp.key); setLength("all"); }} style={{
+              flex: 1, padding: "10px 4px", borderRadius: 999, border: "none", cursor: "pointer",
+              background: "#FFF1E8", color: INK, fontSize: 12.5, fontWeight: 500, whiteSpace: "nowrap",
+            }}>{bp.label}</button>
+          ))}
+        </div>
+        <div style={{ display: "flex", gap: 8 }} role="group" aria-label="练多久">
+          {["all", ...Array.from(new Set(VIDEOS[selected].map(v => v.duration)))].map(d => {
+            const on = length === d;
             return (
-              <button key={bp.key} type="button" onClick={() => setSelected(bp.key)} aria-pressed={on} style={{
-                padding: "14px 12px", borderRadius: 18, border: "none", cursor: "pointer", textAlign: "left",
-                background: on ? CTA : TILE, color: on ? "#fff" : INK,
-                boxShadow: on ? "0 8px 16px rgba(255,122,69,0.25)" : "none",
-                display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 700,
-              }}>
-                <span style={{ fontSize: 20 }} aria-hidden="true">{bp.emoji}</span>
-                {bp.label}
-              </button>
+              <button key={d} type="button" aria-pressed={on} onClick={() => setLength(d)} style={{
+                flex: 1, padding: "8px 4px", borderRadius: 999, border: "none", cursor: "pointer",
+                background: on ? INK : "#FFF1E8", color: on ? "#fff" : INK, fontSize: 12.5, fontWeight: on ? 700 : 500,
+              }}>{d === "all" ? "全部" : d.replace("分钟", "分")}</button>
             );
           })}
         </div>
 
         {/* Video list */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
-          {VIDEOS[selected].map(video => {
+        <div id="videos" style={{ display: "flex", flexDirection: "column", gap: "16px", scrollMarginTop: 16 }}>
+          {VIDEOS[selected].filter(v => length === "all" || v.duration === length).map(video => {
             const done = completedVideos.has(video.id);
             return (
               <div key={video.id} style={{

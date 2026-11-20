@@ -84,7 +84,7 @@ export default function HomePage() {
       <PetHero
         title={`${getGreeting()}，${user?.nickname ?? "朋友"}`}
         right={<CoinBadge coins={coins} />}
-        pet={user?.pet} petName={user?.petName} say={say} side="right"
+        pet={user?.pet} petName={user?.petName} pose={7} say={say} side="right"
       />
 
       <Sheet>

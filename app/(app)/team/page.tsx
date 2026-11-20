@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { getUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import PetAvatar from "@/components/PetAvatar";
-import PetHero, { Sheet, INK, SUB, ACC } from "@/components/PetHero";
+import PetHero, { Sheet, H2, INK, SUB, ACC, TILE } from "@/components/PetHero";
 import { getMeals } from "@/lib/meals";
 import { getCheckinDates, todayStr } from "@/lib/pets";
 import { MEAL_LABELS } from "@/lib/nutrition";
@@ -239,7 +239,7 @@ export default function TeamPage() {
   if (!team) return (
     <div>
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
-      <PetHero title="队伍" pet={user?.pet} petName={user?.petName} side="right" say="找几个朋友一起打卡，互相监督更容易坚持哦！" />
+      <PetHero title="队伍" pet={user?.pet} petName={user?.petName} pose={1} side="right" say="找几个朋友一起打卡，互相监督更容易坚持哦！" />
       <Sheet style={{ textAlign:"center" }}>
         <h2 style={{ fontSize:20, fontWeight:700, color:"#5B2E1E", margin:"8px 0 0" }}>还没有队伍</h2>
         <p style={{ fontSize:14, color:"#A67760", margin:"0 0 8px", lineHeight:1.6 }}>邀请好友一起减肥<br />互相监督更有动力！</p>
@@ -281,10 +281,10 @@ export default function TeamPage() {
         right={<button onClick={() => copyLink(team)} style={{ padding:"6px 12px", borderRadius:999, border:"none", background: copied ? "#D1FAE5" : INK, color: copied ? "#059669" : "#fff", fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap", flexShrink:0 }}>{copied ? "✅ 已复制" : "🔗 邀请"}</button>}
       >
         <div style={{ position:"absolute", left:0, right:0, bottom:4, display:"flex", justifyContent:"center", alignItems:"flex-end", gap:10 }}>
-          {members.slice(0, 3).map((m, i) => {
-            const size = m.me ? 104 : 84;
+          {members.map((m, i) => {
+            const size = members.length > 3 ? 62 : m.me ? 100 : 80;
             return (
-              <div key={m.key} style={{ position:"relative", display:"flex", flexDirection:"column", alignItems:"center", order: m.me ? 1 : i === 0 ? 0 : 2 }}>
+              <div key={m.key} style={{ position:"relative", display:"flex", flexDirection:"column", alignItems:"center", order: m.me ? 1 : i === 0 ? 0 : i + 1 }}>
                 <div style={{ borderRadius:"50%", border:`3px solid ${m.checked === false ? "#E9DED6" : "#FF7A45"}`, background:"#fff", padding:2 }}>
                   <PetAvatar pet={m.pet} size={size} crop="head" />
                 </div>
@@ -297,78 +297,76 @@ export default function TeamPage() {
         </div>
       </PetHero>
       <Sheet>
-        {/* 2. Members */}
-        <div style={{ background:"#FFF7F1", borderRadius:20, padding:"16px", marginBottom:12 }}>
-          <p style={{ fontSize:15, fontWeight:600, color:"#5B2E1E", margin:"0 0 12px" }}>队员</p>
-          {members.map(m => (
-            <div key={m.key} style={{ display:"flex", alignItems:"center", padding:"10px 0", borderBottom:"1px solid #F9FAFB" }}>
-              <div style={{ marginRight:12 }}><PetAvatar pet={m.pet} size={40} crop="head" /></div>
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:14, fontWeight:600, color:"#5B2E1E", margin:0 }}>{m.name}{m.leader ? " 👑" : ""}{m.me ? <span style={{ fontSize:11, color:"#FF7A45", fontWeight:600, marginLeft:6 }}>我</span> : null}</p>
-                <p style={{ fontSize:12, color:"#A67760", margin:0 }}>{m.sub}</p>
+        {/* 2. Today's progress */}
+        {(() => {
+          const known = members.filter(m => m.checked !== undefined);
+          const done = known.filter(m => m.checked).length;
+          return (
+            <div style={{ borderRadius:20, padding:14, background:"linear-gradient(90deg,#FFF3EA,#FFE7D8)", display:"flex", flexDirection:"column", gap:8 }}>
+              <div style={{ display:"flex", justifyContent:"space-between", alignItems:"baseline" }}>
+                <span style={{ fontSize:14, fontWeight:700, color:INK }}>今天打卡进度</span>
+                <span style={{ fontSize:12, fontWeight:700, color:ACC }}>{done} / {known.length || members.length} 人</span>
               </div>
-              {m.checked !== undefined && <span style={{ fontSize:12, fontWeight:600, color: m.checked ? "#10B981" : "#A67760" }}>{m.checked ? "✅ 已打卡" : "⏰ 未打卡"}</span>}
+              <span style={{ height:12, borderRadius:999, background:"#fff", overflow:"hidden" }} role="progressbar" aria-label="今天打卡进度" aria-valuenow={done} aria-valuemin={0} aria-valuemax={known.length || members.length}>
+                <span style={{ display:"block", height:"100%", width:`${Math.max(4, (done / Math.max(1, known.length || members.length)) * 100)}%`, borderRadius:999, background:"linear-gradient(90deg,#FFB088,#FF7A45)" }} />
+              </span>
+              {mode === "local" && <span style={{ fontSize:11, color:"#C9B5A8" }}>暂时连不上组队服务，队友的打卡稍后同步</span>}
             </div>
-          ))}
+          );
+        })()}
 
-          {mode === "gone" && (
-            <div style={{ marginTop:12, background:"#FEF3C7", borderRadius:12, padding:"12px 14px", fontSize:13, color:"#92400E", lineHeight:1.6 }}>
-              这支队伍已经解散了。可以退出后，重新创建或加入一支队伍。
-            </div>
-          )}
-          {mode === "local" && (
-            <p style={{ margin:"10px 0 0", fontSize:11, color:"#C9B5A8", textAlign:"center" }}>暂时连不上组队服务，队友的打卡稍后同步</p>
-          )}
+        {mode === "gone" && (
+          <div style={{ background:"#FEF3C7", borderRadius:16, padding:"12px 14px", fontSize:13, color:"#92400E", lineHeight:1.6 }}>
+            这支队伍已经解散了。可以退出后，重新创建或加入一支队伍。
+          </div>
+        )}
 
-          {/* Empty seats: invite */}
-          {openSlots > 0 && mode !== "gone" && <div style={{ marginTop:12, border:"1.5px dashed #FFD2BA", borderRadius:14, padding:"16px 14px", textAlign:"center", background:"#FFFBF8" }}>
-            <div style={{ display:"flex", justifyContent:"center", gap:6, marginBottom:10 }}>
-              {Array.from({ length: openSlots }).map((_, i) => (
-                <span key={i} style={{ width:30, height:30, borderRadius:"50%", border:"1.5px dashed #FFC4A3", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"#FFC4A3", fontSize:16 }}>+</span>
+        {/* Empty seats: invite */}
+        {openSlots > 0 && mode !== "gone" && (
+          <button type="button" onClick={() => copyLink(team)} style={{ display:"flex", alignItems:"center", gap:10, padding:"12px 14px", borderRadius:18, border:"1.5px dashed #FFD2BA", background:"#FFFBF8", cursor:"pointer", textAlign:"left" }}>
+            <span style={{ display:"flex" }}>
+              {Array.from({ length: Math.min(openSlots, 3) }).map((_, i) => (
+                <span key={i} aria-hidden="true" style={{ width:30, height:30, marginLeft: i ? -8 : 0, borderRadius:"50%", border:"1.5px dashed #FFC4A3", background:"#fff", display:"inline-flex", alignItems:"center", justifyContent:"center", color:ACC, fontSize:16 }}>+</span>
               ))}
-            </div>
-            <p style={{ fontSize:14, fontWeight:600, color:"#5B2E1E", margin:"0 0 4px" }}>{members.length <= 1 ? "还没有队友" : `还能再邀请 ${openSlots} 位好友`}</p>
-            <p style={{ fontSize:12, color:"#A67760", margin:"0 0 12px", lineHeight:1.5 }}>把链接发给朋友，一起打卡、互相监督</p>
-            <button onClick={() => copyLink(team)} style={{ padding:"9px 20px", borderRadius:20, border:"none", background:"linear-gradient(135deg,#FF7A45,#FFB088)", color:"#fff", fontSize:13, fontWeight:600, cursor:"pointer" }}>
-              {copied ? "✅ 链接已复制" : "复制邀请链接 🔗"}
-            </button>
-          </div>}
-        </div>
+            </span>
+            <span style={{ flex:1, minWidth:0 }}>
+              <span style={{ display:"block", fontSize:13.5, fontWeight:700, color:INK }}>{members.length <= 1 ? "还没有队友" : `还能再邀请 ${openSlots} 位好友`}</span>
+              <span style={{ display:"block", fontSize:11.5, color:SUB }}>把链接发给朋友，一起打卡、互相监督</span>
+            </span>
+            <span style={{ fontSize:12, fontWeight:700, color:"#fff", background:INK, borderRadius:999, padding:"6px 12px", whiteSpace:"nowrap" }}>{copied ? "已复制" : "复制链接"}</span>
+          </button>
+        )}
 
         {/* 3. Leaderboard: check-in days this week, real members only */}
-        <div style={{ background:"#FFF7F1", borderRadius:20, padding:"16px", marginBottom:12 }}>
-          <p style={{ fontSize:15, fontWeight:600, color:"#5B2E1E", margin:"0 0 12px" }}>本周打卡排行 🏆</p>
+        <H2 action="🏆">本周排行</H2>
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
           {ranking.map((r, i) => (
-            <div key={r.key} style={{ display:"flex", alignItems:"center", padding:"10px 12px", borderRadius:10, background: i === 0 && r.week > 0 ? "#FFFBEB" : r.me ? "#FFFBF8" : "#fff", marginBottom:6 }}>
-              <span style={{ fontSize: i < 3 ? 22 : 14, width:28, marginRight:6, textAlign:"center", color:"#A67760", fontWeight:700 }}>{["🥇", "🥈", "🥉"][i] ?? i + 1}</span>
-              <span style={{ marginRight:8, display:"inline-flex" }}><PetAvatar pet={r.pet} size={32} crop="head" /></span>
-              <div style={{ flex:1 }}>
-                <p style={{ fontSize:13, fontWeight:600, color:"#5B2E1E", margin:0 }}>{r.name}{r.me ? <span style={{ fontSize:11, color:"#FF7A45", marginLeft:6 }}>我</span> : null}</p>
-                <p style={{ fontSize:11, color:"#A67760", margin:0 }}>{r.sub}</p>
-              </div>
-              <span style={{ fontSize:13, fontWeight:700, color:"#FF7A45" }}>{r.week}天</span>
+            <div key={r.key} style={{ display:"flex", alignItems:"center", gap:10, padding:"8px 12px", borderRadius:16, background: i === 0 && r.week > 0 ? "#FFF1C2" : TILE }}>
+              <span style={{ width:16, textAlign:"center", fontSize:16, fontWeight:800, color: i === 0 && r.week > 0 ? "#E0A100" : "#C9B5A8" }}>{i + 1}</span>
+              <PetAvatar pet={r.pet} size={32} crop="head" />
+              <span style={{ flex:1, minWidth:0, fontSize:14, fontWeight:500, color:INK }}>{r.name}{r.me ? <span style={{ fontSize:11, color:ACC, marginLeft:6 }}>我</span> : null}</span>
+              <span style={{ display:"flex", gap:3 }} aria-label={`本周打卡 ${r.week} 天`}>
+                {Array.from({ length: 7 }).map((_, k) => <span key={k} style={{ width:7, height:7, borderRadius:4, background: k < r.week ? ACC : "#fff" }} />)}
+              </span>
             </div>
           ))}
           {ranking.length <= 1 && (
-            <p style={{ fontSize:12, color:"#A67760", margin:"8px 0 0", textAlign:"center" }}>队友加入后，会在这里一起比拼本周打卡天数</p>
+            <p style={{ fontSize:12, color:SUB, margin:"2px 0 0", textAlign:"center" }}>队友加入后，会在这里一起比拼本周打卡天数</p>
           )}
         </div>
 
         {/* 4. Feed */}
-        <div style={{ background:"#FFF7F1", borderRadius:20, padding:"16px", marginBottom:12 }}>
-          <p style={{ fontSize:15, fontWeight:600, color:"#5B2E1E", margin:"0 0 12px" }}>最新动态</p>
+        <H2>最新动态</H2>
+        <div style={{ display:"flex", flexDirection:"column", gap:8 }}>
           {feed.length === 0 && (
-            <p style={{ fontSize:13, color:"#A67760", textAlign:"center", margin:"8px 0", lineHeight:1.6 }}>还没有动态<br />记录一餐或完成运动打卡，队友就能看到</p>
+            <p style={{ fontSize:13, color:SUB, textAlign:"center", margin:"4px 0", lineHeight:1.6 }}>还没有动态<br />记录一餐或完成运动打卡，队友就能看到</p>
           )}
           {feed.map(f => (
-            <div key={f.id} style={{ background:"#FAFAFA", borderRadius:12, padding:"12px", marginBottom:10 }}>
-              <div style={{ display:"flex", gap:10 }}>
-                <PetAvatar pet={f.pet} size={46} crop="head" />
-                <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:13, fontWeight:700, color:"#5B2E1E", margin:"0 0 3px" }}>{f.desc}</p>
-                  <p style={{ fontSize:12, color:"#A67760", margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.detail}</p>
-                </div>
-                <span style={{ fontSize:11, color:"#A67760", whiteSpace:"nowrap" }}>{f.time}</span>
+            <div key={f.id} style={{ display:"flex", gap:10, alignItems:"center", background:TILE, borderRadius:16, padding:"10px 12px" }}>
+              <PetAvatar pet={f.pet} size={34} crop="head" />
+              <div style={{ flex:1, minWidth:0 }}>
+                <p style={{ fontSize:12.5, fontWeight:500, color:INK, margin:0 }}>{f.desc}</p>
+                <p style={{ fontSize:11, color:SUB, margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.time} · {f.detail}</p>
               </div>
             </div>
           ))}

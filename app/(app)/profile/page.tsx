@@ -5,12 +5,12 @@ import { useRouter } from "next/navigation";
 import { getUser, saveUserData, logout } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import PetAvatar from "@/components/PetAvatar";
-import PetHero, { Sheet } from "@/components/PetHero";
+import { Sheet, H2, INK, SUB, ACC, CTA, TILE } from "@/components/PetHero";
 import { targetsFor } from "@/lib/goals";
 import { getWeightLog, logWeight, recentWeighIns, weekScores, dayScore, type WeighIn } from "@/lib/weight";
 import {
-  LineChart, Line, BarChart, Bar, XAxis, YAxis,
-  Tooltip, ResponsiveContainer, Cell,
+  LineChart, Line, XAxis, YAxis,
+  Tooltip, ResponsiveContainer,
 } from "recharts";
 import { dayKey } from "@/lib/date";
 
@@ -289,199 +289,152 @@ export default function ProfilePage() {
         </div>
       )}
 
-      <PetHero title="我的" height={70}><></></PetHero>
-      <div style={{padding:"0 18px 22px"}}>
-
-        {/* ── 1. User card ── */}
-        <div>
-          <div style={{display:"flex",alignItems:"center",gap:14,marginBottom:16}}>
-            <div style={{width:58,height:58,borderRadius:"50%",background:avatarColor,display:"flex",alignItems:"center",justifyContent:"center",fontSize:24,fontWeight:800,color:"#fff",flexShrink:0,overflow:"hidden"}}>
+      {/* ── Header: me + my pet ── */}
+      <header style={{ position:"relative", padding:"max(16px, env(safe-area-inset-top)) 20px 26px" }}>
+        <div style={{ display:"flex", justifyContent:"space-between", alignItems:"center" }}>
+          <h1 style={{ margin:0, fontFamily:"'ZCOOL KuaiLe', system-ui, sans-serif", fontWeight:400, fontSize:24, color:INK }}>我的</h1>
+          <a href="#settings" aria-label="设置" style={{ display:"flex", padding:4, color:INK }}>
+            <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="3" /><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1" /></svg>
+          </a>
+        </div>
+        <div style={{ display:"flex", alignItems:"center", gap:16, marginTop:18 }}>
+          <button type="button" onClick={openAvatar} aria-label="修改头像" style={{ position:"relative", width:92, height:92, flexShrink:0, padding:0, border:"none", background:"none", cursor:"pointer" }}>
+            <span style={{ display:"flex", alignItems:"center", justifyContent:"center", width:92, height:92, borderRadius:"50%", overflow:"hidden", border:"4px solid #fff", background: avatarPhoto || user?.gender ? "#fff" : avatarColor, fontSize:34, fontWeight:800, color:"#fff", boxShadow:"0 6px 16px rgba(255,122,69,0.18)" }}>
               {avatarPhoto
-                ? <img src={avatarPhoto} alt="avatar" style={{width:"100%",height:"100%",objectFit:"cover"}} />
-                : (user?.nickname?.[0]?.toUpperCase()??"U")
-              }
+                // eslint-disable-next-line @next/next/no-img-element
+                ? <img src={avatarPhoto} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                : user?.gender
+                  // eslint-disable-next-line @next/next/no-img-element
+                  ? <img src={`/register/gender/${user.gender === "male" ? "male" : "female"}.webp`} alt="" style={{ width:"100%", height:"100%", objectFit:"cover" }} />
+                  : (user?.nickname?.[0]?.toUpperCase() ?? "U")}
+            </span>
+            {user?.pet && (
+              <span style={{ position:"absolute", right:-14, bottom:-4, borderRadius:"50%", border:"3px solid #fff", display:"flex", boxShadow:"0 4px 10px rgba(255,122,69,0.2)" }}>
+                <PetAvatar pet={user.pet} size={46} crop="head" />
+              </span>
+            )}
+          </button>
+          <div style={{ minWidth:0 }}>
+            <button type="button" onClick={openNick} style={{ padding:0, border:"none", background:"none", cursor:"pointer", fontFamily:"'ZCOOL KuaiLe', system-ui, sans-serif", fontSize:26, color:INK }}>{user?.nickname ?? "--"}</button>
+            <p style={{ margin:"2px 0 8px", fontSize:12.5, color:SUB }}>和{user?.petName ?? "宠物"}一起坚持了 {journeyDays} 天 · 🪙 {coins}</p>
+            <div style={{ display:"flex", flexWrap:"wrap", gap:6 }}>
+              {[user?.height ? `${user.height} cm` : null, user?.weight ? `${user.weight} kg` : null, user?.targetWeight ? `目标 ${user.targetWeight} kg` : null].filter(Boolean).map(t => (
+                <span key={t} style={{ padding:"3px 9px", borderRadius:999, background:"#fff", fontSize:11, fontWeight:500, color:INK }}>{t}</span>
+              ))}
             </div>
-            <div style={{flex:1}}>
-              <h2 style={{fontSize:20,fontWeight:800,color:"#5B2E1E",margin:"0 0 3px"}}>{user?.nickname??"--"}</h2>
-              <p style={{fontSize:12,color:"#A67760",margin:0}}>第 {journeyDays} 天的健康之旅</p>
-            </div>
-            <div style={{textAlign:"right"}}>
-              <div style={{display:"flex",justifyContent:"flex-end",marginBottom:4}}><PetAvatar pet={user?.pet ?? "🐾"} size={44} crop="head" /></div>
-              <div style={{fontSize:12,color:"#FF7A45",fontWeight:600}}>🪙 {coins}</div>
-            </div>
-          </div>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-            {[
-              {label:"当前体重",val: user?.weight ? `${user.weight}kg`:"--"},
-              {label:"目标体重",val: user?.targetWeight ? `${user.targetWeight}kg`:"--"},
-              {label:"还差",val: currentW&&targetW ? `${diff}kg`:"--"},
-            ].map(c=>(
-              <div key={c.label} style={{background:"rgba(255,255,255,.6)",borderRadius:12,padding:"10px 8px",textAlign:"center"}}>
-                <p style={{fontSize:16,fontWeight:800,color:"#5B2E1E",margin:"0 0 2px"}}>{c.val}</p>
-                <p style={{fontSize:10,color:"#A67760",margin:0}}>{c.label}</p>
-              </div>
-            ))}
           </div>
         </div>
+      </header>
 
-      </div>
-      <Sheet style={{gap:0}}>
-        {/* ── Daily calorie target (worked out in lib/goals; only the result is shown) ── */}
+      <Sheet>
+        {/* ── Key numbers ── */}
         {(() => {
           const t = targetsFor(user), p = t.plan;
+          const tiles: { label: string; value: string; unit: string; hot?: boolean; onClick: () => void }[] = [
+            { label:"每日目标", value: t.calories.toLocaleString(), unit:"kcal", hot:true, onClick: openTarget },
+            { label: lostKg > 0 ? "已减" : "还差", value: lostKg > 0 ? lostKg.toFixed(1) : (currentW && targetW ? diff : "--"), unit:"kg", onClick: openBodyStats },
+            { label:"饮食评分", value: scored.length ? String(avgScore) : "--", unit: scored.length ? "分" : "", onClick: () => {} },
+          ];
           return (
-            <div id="goal" className="ph-no-capture" style={{background:"#FFF7F1",borderRadius:20,padding:"16px",marginBottom:14,scrollMarginTop:16}}>
-              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline"}}>
-                <p style={{fontSize:15,fontWeight:600,color:"#5B2E1E",margin:0}}>每日热量目标 🎯</p>
-                <p style={{margin:0}}><span style={{fontSize:24,fontWeight:800,color:"#FF7A45"}}>{t.calories}</span><span style={{fontSize:12,color:"#A67760",marginLeft:3}}>kcal</span></p>
+            <div id="goal" className="ph-no-capture" style={{ display:"flex", flexDirection:"column", gap:8, scrollMarginTop:16 }}>
+              <div style={{ display:"flex", gap:10 }}>
+                {tiles.map(c => (
+                  <button key={c.label} type="button" onClick={c.onClick} style={{
+                    flex:1, minWidth:0, textAlign:"left", border:"none", cursor:"pointer", borderRadius:18, padding:12,
+                    background: c.hot ? CTA : TILE, color: c.hot ? "#fff" : INK, boxShadow: c.hot ? "0 8px 16px rgba(255,122,69,0.25)" : "none",
+                  }}>
+                    <span style={{ display:"block", fontSize:11, color: c.hot ? "#fff" : SUB }}>{c.label}</span>
+                    <span style={{ fontSize:20, fontWeight:800 }}>{c.value}</span>
+                    <span style={{ fontSize:11, marginLeft:2, color: c.hot ? "#fff" : SUB }}>{c.unit}</span>
+                  </button>
+                ))}
               </div>
               {!p ? (
-                <p style={{fontSize:12,color:"#A67760",margin:"8px 0 0",lineHeight:1.6}}>资料不完整，暂时用默认值。在下面「修改身高体重」里补全身高、体重，就会按你的身体情况计算。</p>
+                <p style={{ fontSize:12, color:SUB, margin:0, lineHeight:1.6 }}>资料不完整，暂时用默认值。点「还差」补全身高、体重，就会按你的身体情况计算。</p>
               ) : (
-                <div style={{marginTop:6}}>
-                  <p style={{fontSize:13,color:"#5B2E1E",margin:0}}>蛋白质 {t.protein}g · 脂肪不超过 {t.fat}g</p>
-                  {p.goal !== "maintain" && p.monthsNeeded && (
-                    <p style={{fontSize:12,color:"#A67760",margin:"6px 0 0",lineHeight:1.5}}>
-                      按这个目标，约每周{p.goal === "lose" ? "减" : "增"} {Math.abs(p.weeklyKg)}kg，预计 {p.monthsNeeded} 个月到 {user?.targetWeight}kg
-                    </p>
-                  )}
-                  {(p.floored || (p.capped && p.goal === "lose")) && (
-                    <p style={{fontSize:12,color:"#B45309",background:"#FEF3C7",borderRadius:10,padding:"8px 10px",margin:"10px 0 0",lineHeight:1.5}}>
-                      {p.floored
-                        ? "已经是安全的最低摄入量，不建议再少吃。想快一点，可以多运动。"
-                        : `原计划 ${user?.goalMonths} 个月有点快，已按健康的速度安排。`}
-                    </p>
-                  )}
-                </div>
+                <p style={{ fontSize:12, color:SUB, margin:0, lineHeight:1.6 }}>
+                  蛋白质 {t.protein}g · 脂肪不超过 {t.fat}g
+                  {p.goal !== "maintain" && p.monthsNeeded ? ` · 约每周${p.goal === "lose" ? "减" : "增"} ${Math.abs(p.weeklyKg)}kg，预计 ${p.monthsNeeded} 个月到 ${user?.targetWeight}kg` : ""}
+                </p>
+              )}
+              {p && (p.floored || (p.capped && p.goal === "lose")) && (
+                <p style={{ fontSize:12, color:"#B45309", background:"#FEF3C7", borderRadius:12, padding:"8px 10px", margin:0, lineHeight:1.5 }}>
+                  {p.floored ? "已经是安全的最低摄入量，不建议再少吃。想快一点，可以多运动。" : `原计划 ${user?.goalMonths} 个月有点快，已按健康的速度安排。`}
+                </p>
               )}
             </div>
           );
         })()}
 
-        {/* ── 2. Charts ── */}
-        <div style={{background:"#FFF7F1",borderRadius:20,padding:"16px",marginBottom:14}}>
-          <p style={{fontSize:15,fontWeight:600,color:"#5B2E1E",margin:"0 0 14px"}}>本周概览 📊</p>
-
-          {/* Weight: only days the user weighed in */}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",margin:"0 0 8px"}}>
-            <p style={{fontSize:13,color:"#6B7280",margin:0,fontWeight:600}}>体重变化 <span style={{fontWeight:400,color:"#A67760"}}>近 14 天</span></p>
-            {loggedToday && !editingToday && (
-              <button onClick={()=>{ setTodayKg(String(loggedToday.kg)); setEditingToday(true); }} style={{background:"none",border:"none",color:"#FF7A45",fontSize:12,fontWeight:600,cursor:"pointer",padding:0}}>
-                今天 {loggedToday.kg}kg ✓ 修改
-              </button>
-            )}
-          </div>
+        {/* ── Weight ── */}
+        <H2 action={loggedToday && !editingToday
+          ? <button type="button" onClick={()=>{ setTodayKg(String(loggedToday.kg)); setEditingToday(true); }} style={{ background:"none", border:"none", color:ACC, fontSize:12, fontWeight:600, cursor:"pointer", padding:0 }}>今天 {loggedToday.kg}kg ✓ 修改</button>
+          : "近 14 天"}>体重曲线</H2>
+        <div style={{ background:TILE, borderRadius:20, padding:12 }}>
           {(!loggedToday || editingToday) && (
-            <div style={{display:"flex",gap:8,alignItems:"center",background:"#FFFBF8",borderRadius:12,padding:"10px 12px",marginBottom:10}}>
-              <span style={{fontSize:13,color:"#5B2E1E",fontWeight:600,flexShrink:0}}>⚖️ 今天体重</span>
+            <div style={{ display:"flex", gap:8, alignItems:"center", marginBottom:8 }}>
+              <span style={{ fontSize:13, color:INK, fontWeight:600, flexShrink:0 }}>⚖️ 今天体重</span>
               <input value={todayKg} onChange={e=>setTodayKg(e.target.value.replace(/[^\d.]/g,"").slice(0,5))} onKeyDown={e=>{ if(e.key==="Enter") saveWeighIn(parseFloat(todayKg)); }}
                 inputMode="decimal" placeholder={user?.weight ? String(user.weight) : "kg"} aria-label="今天体重"
-                style={{flex:1,minWidth:0,padding:"8px 10px",borderRadius:10,border:"1.5px solid #FFE7D8",fontSize:14,color:"#5B2E1E",outline:"none"}} />
-              <span style={{fontSize:13,color:"#A67760"}}>kg</span>
+                style={{ flex:1, minWidth:0, padding:"8px 12px", borderRadius:999, border:"1.5px solid #FFE7D8", background:"#fff", fontSize:14, color:INK, outline:"none" }} />
+              <span style={{ fontSize:13, color:SUB }}>kg</span>
               <button onClick={()=>saveWeighIn(parseFloat(todayKg))} disabled={!(parseFloat(todayKg)>=25)}
-                style={{padding:"8px 14px",borderRadius:10,border:"none",background:parseFloat(todayKg)>=25?"#FF7A45":"#FFD2BA",color:"#fff",fontSize:13,fontWeight:600,cursor:"pointer",flexShrink:0}}>记录</button>
+                style={{ padding:"8px 14px", borderRadius:999, border:"none", background:parseFloat(todayKg)>=25?INK:"#FFD2BA", color:"#fff", fontSize:13, fontWeight:700, cursor:"pointer", flexShrink:0 }}>记录</button>
             </div>
           )}
-
           {weighIns.length >= 2 ? (
             <>
-              <ResponsiveContainer width="100%" height={120}>
-                <LineChart data={weighIns.map(w => ({ d: md(w.date), v: w.kg }))} margin={{top:5,right:10,bottom:0,left:-20}}>
-                  <XAxis dataKey="d" tick={{fontSize:10,fill:"#A67760"}} axisLine={false} tickLine={false} />
-                  <YAxis domain={['auto','auto']} tick={{fontSize:10,fill:"#A67760"}} axisLine={false} tickLine={false} />
+              <ResponsiveContainer width="100%" height={110}>
+                <LineChart data={weighIns.map(w => ({ d: md(w.date), v: w.kg }))} margin={{top:8,right:10,bottom:0,left:-20}}>
+                  <XAxis dataKey="d" tick={{fontSize:10,fill:SUB}} axisLine={false} tickLine={false} />
+                  <YAxis domain={['auto','auto']} tick={{fontSize:10,fill:SUB}} axisLine={false} tickLine={false} />
                   <Tooltip contentStyle={{fontSize:12,borderRadius:8}} formatter={(v) => [`${v} kg`, "体重"]} />
-                  <Line type="monotone" dataKey="v" stroke="#FF7A45" strokeWidth={2.5} dot={{r:3,fill:"#FF7A45"}} />
+                  <Line type="monotone" dataKey="v" stroke={ACC} strokeWidth={3} dot={{r:3,fill:"#fff",stroke:ACC,strokeWidth:2}} />
                 </LineChart>
               </ResponsiveContainer>
-              <p style={{fontSize:12,fontWeight:600,textAlign:"center",margin:"4px 0 16px",color: change < 0 ? "#10B981" : change > 0 ? "#F59E0B" : "#A67760"}}>
+              <p style={{ fontSize:12, fontWeight:600, textAlign:"center", margin:"4px 0 0", color: change < 0 ? "#10B981" : change > 0 ? "#F59E0B" : SUB }}>
                 {change < 0 ? `比 ${md(first.date)} 轻了 ${Math.abs(change)}kg 🎉` : change > 0 ? `比 ${md(first.date)} 重了 ${change}kg，慢慢来 💪` : `和 ${md(first.date)} 持平`}
-                {user?.targetWeight && last.kg > user.targetWeight ? <span style={{color:"#A67760",fontWeight:400}}> · 离目标还有 {(last.kg - user.targetWeight).toFixed(1)}kg</span> : null}
               </p>
             </>
           ) : (
-            <div style={{textAlign:"center",padding:"14px 8px 18px",color:"#A67760",fontSize:12,lineHeight:1.7}}>
+            <p style={{ textAlign:"center", margin:"6px 0", color:SUB, fontSize:12, lineHeight:1.7 }}>
               {weighIns.length === 1
-                ? <>已记录 {md(weighIns[0].date)}：<b style={{color:"#5B2E1E"}}>{weighIns[0].kg}kg</b><br />再记一天，就能看到你的体重曲线</>
+                ? <>已记录 {md(weighIns[0].date)}：<b style={{color:INK}}>{weighIns[0].kg}kg</b><br />再记一天，就能看到你的体重曲线</>
                 : <>还没有体重记录<br />每天称一次记下来，这里会画出你的变化曲线</>}
-            </div>
-          )}
-
-          {/* Diet score: real days only (two or more meals recorded) */}
-          <p style={{fontSize:13,color:"#6B7280",margin:"0 0 6px",fontWeight:600}}>饮食健康评分 <span style={{fontWeight:400,color:"#A67760"}}>本周</span></p>
-          {scored.length > 0 ? (
-            <>
-              <ResponsiveContainer width="100%" height={120}>
-                <BarChart data={scores.map(d => ({ d: d.label, v: d.score }))} margin={{top:5,right:10,bottom:0,left:-20}}>
-                  <XAxis dataKey="d" tick={{fontSize:10,fill:"#A67760"}} axisLine={false} tickLine={false} />
-                  <YAxis domain={[0,100]} tick={{fontSize:10,fill:"#A67760"}} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{fontSize:12,borderRadius:8}} formatter={(v) => [`${v} 分`, "评分"]} />
-                  <Bar dataKey="v" radius={[4,4,0,0]}>
-                    {scores.map((entry,i)=>(
-                      <Cell key={i} fill={(entry.score ?? 0)>=80?"#6EE7B7":(entry.score ?? 0)>=60?"#FF7A45":"#FFB088"} />
-                    ))}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-              <p style={{fontSize:12,color:"#A67760",fontWeight:600,textAlign:"center",margin:"4px 0 0"}}>本周 {scored.length} 天有评分，平均 {avgScore} 分</p>
-            </>
-          ) : (
-            <div style={{textAlign:"center",padding:"14px 8px 6px",color:"#A67760",fontSize:12,lineHeight:1.7}}>
-              本周还没有评分<br />一天记录两餐以上，就会按你的热量和营养目标打分
-            </div>
+            </p>
           )}
         </div>
 
-        {/* ── 3. Badges ── */}
-        <div style={{background:"#FFF7F1",borderRadius:20,padding:"16px",marginBottom:14}}>
-          <p style={{fontSize:15,fontWeight:600,color:"#5B2E1E",margin:"0 0 14px"}}>我的成就 🏅</p>
-          <div style={{display:"flex",gap:10,overflowX:"auto",paddingBottom:4}}>
-            {badges.map(b=>(
-              <div key={b.name} style={{flexShrink:0,width:90,background:b.unlocked?"#FAFAFA":"#F3F4F6",borderRadius:14,padding:"14px 8px",textAlign:"center",border:b.unlocked?"2px solid #FFE7D8":"2px solid #E5E7EB"}}>
-                <div style={{fontSize:34,marginBottom:4,filter:b.unlocked?"none":"grayscale(1) opacity(.4)"}}>{b.emoji}</div>
-                {!b.unlocked && <div style={{fontSize:14,marginBottom:2}}>🔒</div>}
-                <p style={{fontSize:11,fontWeight:700,color:b.unlocked?"#5B2E1E":"#A67760",margin:"0 0 3px"}}>{b.name}</p>
-                <p style={{fontSize:10,color:"#A67760",margin:0,lineHeight:1.3}}>{b.cond}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* ── 4. Settings ── */}
-        <div style={{background:"#FFF7F1",borderRadius:20,padding:"16px",marginBottom:8}}>
-          <p style={{fontSize:15,fontWeight:600,color:"#5B2E1E",margin:"0 0 4px"}}>设置 ⚙️</p>
-
-          {[
-            {section:"个人信息", items:[
-              {label:"修改昵称", onClick:openNick},
-              {label:"修改头像", onClick:openAvatar},
-            ]},
-            {section:"目标设置", items:[
-              {label:"修改目标体重", onClick:openTarget},
-              {label:"修改身高体重", onClick:openBodyStats},
-            ]},
-            {section:"饮食偏好", items:[
-              {label:"饮食偏好", onClick:openDiet},
-            ]},
-            {section:"账号安全", items:[
-              {label:"修改密码", onClick:openPassword},
-            ]},
-            {section:"其他", items:[
-              {label:"关于轻食伴侣", onClick:openAbout},
-              {label:"退出登录", onClick:()=>setShowConfirmLogout(true), red:true},
-            ]},
-          ].map(group=>(
-            <div key={group.section} style={{marginBottom:8}}>
-              <p style={{fontSize:11,color:"#A67760",margin:"10px 0 4px",textTransform:"uppercase",letterSpacing:.5}}>{group.section}</p>
-              {group.items.map((item,i)=>(
-                <button key={item.label} onClick={item.onClick} style={{width:"100%",display:"flex",justifyContent:"space-between",alignItems:"center",padding:"13px 0",background:"none",border:"none",borderBottom:i<group.items.length-1?"1px solid #F9FAFB":"none",cursor:"pointer",color:("red" in item && item.red)?"#EF4444":"#5B2E1E",fontSize:14,fontWeight:500}}>
-                  {item.label}
-                  <span style={{color:"#D1D5DB",fontSize:16}}>→</span>
-                </button>
-              ))}
+        {/* ── Badges ── */}
+        <H2 action={`${badges.filter(b => b.unlocked).length} / ${badges.length}`}>勋章墙</H2>
+        <div style={{ display:"grid", gridTemplateColumns:"repeat(6, 1fr)", gap:4 }}>
+          {badges.map(b => (
+            <div key={b.name} title={b.cond} style={{ display:"flex", flexDirection:"column", alignItems:"center", gap:4, opacity: b.unlocked ? 1 : .45 }}>
+              <span style={{ width:46, height:46, borderRadius:"50%", display:"flex", alignItems:"center", justifyContent:"center", fontSize:22, background: b.unlocked ? "#FFF1C2" : "#F3EEEA", filter: b.unlocked ? "none" : "grayscale(1)" }}>{b.emoji}</span>
+              <span style={{ fontSize:10, fontWeight:500, color:INK, textAlign:"center", lineHeight:1.2 }}>{b.name}</span>
             </div>
           ))}
         </div>
+        {(() => { const next = badges.find(b => !b.unlocked); return next ? <p style={{ margin:0, fontSize:11.5, color:SUB, textAlign:"center" }}>下一枚「{next.name}」：{next.cond}</p> : null; })()}
 
+        {/* ── Settings ── */}
+        <div id="settings" style={{ background:TILE, borderRadius:20, padding:"4px 16px", scrollMarginTop:16 }}>
+          {[
+            { label:"个人信息", sub:`${user?.nickname ?? ""}`, onClick:openNick },
+            { label:"身高体重", sub: user?.height ? `${user.height} cm · ${user.weight} kg` : "", onClick:openBodyStats },
+            { label:"目标体重", sub: user?.targetWeight ? `${user.targetWeight} kg · ${user.goalMonths} 个月` : "", onClick:openTarget },
+            { label:"饮食偏好", sub:`${dietPrefs.length ? `已选 ${dietPrefs.length} 项` : "未设置"}`, onClick:openDiet },
+            { label:"修改密码", sub:"", onClick:openPassword },
+            { label:"关于轻食伴侣", sub:"", onClick:openAbout },
+            { label:"退出登录", sub:"", onClick:()=>setShowConfirmLogout(true), red:true },
+          ].map((item, i, arr) => (
+            <button key={item.label} type="button" onClick={item.onClick} style={{ width:"100%", display:"flex", alignItems:"center", gap:8, padding:"13px 0", background:"none", border:"none", borderBottom: i < arr.length - 1 ? "1px solid #FFE7D8" : "none", cursor:"pointer", color: item.red ? "#EF4444" : INK, fontSize:14, fontWeight:500, textAlign:"left" }}>
+              <span style={{ flex:1 }}>{item.label}</span>
+              {item.sub && <span style={{ fontSize:12, color:SUB }}>{item.sub}</span>}
+              <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#C9B5A8" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round"><path d="M9 6l6 6-6 6" /></svg>
+            </button>
+          ))}
+        </div>
       </Sheet>
     </div>
   );
