@@ -79,6 +79,8 @@ export default function PetPage() {
   const [streak, setStreak] = useState(0);
   const [trigger, setTrigger] = useState<{ clip: PetClip; id: number } | null>(null);
   const [demo, setDemo] = useState(false);
+  /** The item just put on, for the pet thank-you line. */
+  const [gift, setGift] = useState<string | null>(null);
 
   useEffect(() => {
     setUser(getUser());
@@ -134,6 +136,17 @@ export default function PetPage() {
       if (item.kind === "background") next.background = item.id; else next.equipped = item.id;
     }
     setStore(next); saveStore(next);
+
+    // Put on (not taken off): bring the stage into view so the animation is seen.
+    const nowOn = item.kind === "background" ? next.background === item.id : next.equipped === item.id;
+    if (!nowOn) { setGift(null); return; }
+    setGift(item.name);
+    window.setTimeout(() => setGift(g => (g === item.name ? null : g)), 6000);
+    window.scrollTo({ top: 0, behavior: "smooth" });
+    // Items with their own clip play it when `wear` changes (PetStage). The rest get a happy reaction.
+    if (mood === "full" || !petWear(petKindOf(pet), item.id)) {
+      window.setTimeout(() => setTrigger({ clip: "celebrate", id: Date.now() }), 350);
+    }
   }
 
   if (!pet) return (
@@ -144,6 +157,7 @@ export default function PetPage() {
   );
 
   const say =
+    gift ? `哇！谢谢你的${gift}，我好喜欢～` :
     mood === "full" ? `今天吃得有点多，我撑得犯困啦～明天一起动起来` :
     mood === "sport" ? `${streaking ? `连续打卡 ${streak} 天，` : "今天运动打卡啦，"}我精神满满！${dressed && equippedItem ? `还戴上了${equippedItem.name}～` : ""}` :
     eaten.meals === 0 ? "今天还没吃饭吗？记一餐，我就能吃饱啦" :
@@ -166,7 +180,7 @@ export default function PetPage() {
       {/* Keys the clips' lavender studio background out, so the pet stands on the stage. */}
       <svg width="0" height="0" style={{ position: "absolute" }} aria-hidden="true">
         <filter id="pet-key" colorInterpolationFilters="sRGB">
-          <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  20 20 -40 1 0" />
+          <feColorMatrix type="matrix" values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  22 22 -98 55 0" />
         </filter>
       </svg>
 
