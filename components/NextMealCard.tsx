@@ -7,7 +7,7 @@ import { ageOf, getDietPrefs } from "@/lib/goals";
 import { fallbackIdeas, planNextMeal, type MealIdea, type Totals } from "@/lib/nutrition";
 import { dayKey } from "@/lib/date";
 
-const ink = "#3B1F5E", grey = "#9CA3AF", purple = "#C084FC";
+const ink = "#5B2E1E", grey = "#A67760", purple = "#FF7A45";
 const CACHE_KEY = "fitbuddy_next_meal";
 /** Ideas shown in the last few days, sent along so the AI doesn't keep suggesting the same dishes. */
 const HISTORY_KEY = "fitbuddy_idea_history";
@@ -97,7 +97,7 @@ export default function NextMealCard({ mealType, totals, lastMeal }: { mealType:
   ];
 
   return (
-    <div style={{ background: "#fff", borderRadius: 16, padding: 18, boxShadow: "0 2px 16px rgba(192,132,252,0.12)" }}>
+    <div style={{ background: "#fff", borderRadius: 16, padding: 18, boxShadow: "0 2px 16px rgba(255,122,69,0.12)" }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 8 }}>
         <p style={{ margin: 0, fontSize: 15, fontWeight: 700, color: ink }}>🥗 {plan.nextMeal}吃什么</p>
         <p style={{ margin: 0, fontSize: 13, color: purple, fontWeight: 700, whiteSpace: "nowrap" }}>建议 ≈ {budget} kcal</p>
@@ -111,7 +111,7 @@ export default function NextMealCard({ mealType, totals, lastMeal }: { mealType:
           return (
             <div key={b.label} style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <span style={{ width: 40, fontSize: 12, color: grey, flexShrink: 0 }}>{b.label}</span>
-              <div style={{ flex: 1, height: 6, borderRadius: 3, background: "#F5F3FF", overflow: "hidden" }}>
+              <div style={{ flex: 1, height: 6, borderRadius: 3, background: "#FFF4EC", overflow: "hidden" }}>
                 <div style={{ width: `${Math.min(100, (b.now / Math.max(1, b.goal)) * 100)}%`, height: "100%", borderRadius: 3, background: over ? "#F59E0B" : b.color }} />
               </div>
               <span style={{ fontSize: 11, color: over ? "#B45309" : grey, whiteSpace: "nowrap", minWidth: 92, textAlign: "right" }}>
@@ -122,7 +122,7 @@ export default function NextMealCard({ mealType, totals, lastMeal }: { mealType:
         })}
       </div>
       {!targets.personal && (
-        <p style={{ margin: "6px 0 0", fontSize: 11, color: "#C4B5D0" }}>完善身高、体重、生日后，会按你的身体情况计算目标</p>
+        <p style={{ margin: "6px 0 0", fontSize: 11, color: "#C9B5A8" }}>完善身高、体重、生日后，会按你的身体情况计算目标</p>
       )}
 
       {plan.flags.length > 0 && (
@@ -141,7 +141,7 @@ export default function NextMealCard({ mealType, totals, lastMeal }: { mealType:
         <p style={{ margin: 0, fontSize: 13, fontWeight: 700, color: ink }}>推荐吃这些</p>
         {data && !stale && (
           <button onClick={() => load(true, true)} disabled={loading} aria-label="换一批推荐"
-            style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 12px", borderRadius: 999, border: "1.5px solid #E9D5FF", background: "#fff", color: purple, fontSize: 12, fontWeight: 600, cursor: loading ? "default" : "pointer" }}>
+            style={{ display: "flex", alignItems: "center", gap: 4, padding: "5px 12px", borderRadius: 999, border: "1.5px solid #FFD2BA", background: "#fff", color: purple, fontSize: 12, fontWeight: 600, cursor: loading ? "default" : "pointer" }}>
             <span style={{ display: "inline-block", animation: loading ? "nm-spin 0.8s linear infinite" : undefined }}>↻</span>
             {loading ? "换菜中..." : "换一批"}
           </button>
@@ -149,10 +149,10 @@ export default function NextMealCard({ mealType, totals, lastMeal }: { mealType:
       </div>
       <div style={{ marginTop: 8, display: "flex", flexDirection: "column", gap: 8, opacity: stale || loading ? 0.55 : 1, transition: "opacity .2s" }}>
         {loading && !data && [0, 1, 2].map(i => (
-          <div key={i} style={{ height: 56, borderRadius: 12, background: "linear-gradient(90deg,#F5F3FF,#FCE7F3,#F5F3FF)", backgroundSize: "200% 100%", animation: "nm-shimmer 1.2s linear infinite" }} />
+          <div key={i} style={{ height: 56, borderRadius: 12, background: "linear-gradient(90deg,#FFF4EC,#FFEDE2,#FFF4EC)", backgroundSize: "200% 100%", animation: "nm-shimmer 1.2s linear infinite" }} />
         ))}
         {data?.ideas.map(idea => (
-          <div key={idea.name} style={{ display: "flex", alignItems: "center", gap: 10, background: "#FCFAFF", borderRadius: 12, padding: "10px 12px" }}>
+          <div key={idea.name} style={{ display: "flex", alignItems: "center", gap: 10, background: "#FFFBF8", borderRadius: 12, padding: "10px 12px" }}>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: ink }}>{idea.name}</p>
               <p style={{ margin: "2px 0 0", fontSize: 12, color: grey }}>{idea.why}</p>
@@ -167,13 +167,13 @@ export default function NextMealCard({ mealType, totals, lastMeal }: { mealType:
       </div>
       <style>{`@keyframes nm-shimmer{from{background-position:200% 0}to{background-position:0 0}}@keyframes nm-spin{to{transform:rotate(360deg)}}`}</style>
 
-      {data?.tip && !stale && <p style={{ margin: "10px 0 0", fontSize: 12, color: "#7C3AED" }}>💜 {data.tip}</p>}
+      {data?.tip && !stale && <p style={{ margin: "10px 0 0", fontSize: 12, color: "#E8622E" }}>💜 {data.tip}</p>}
       {stale && (
-        <button onClick={() => load(true)} disabled={loading} style={{ marginTop: 10, width: "100%", padding: "9px", borderRadius: 10, border: "1.5px solid #E9D5FF", background: "#fff", color: purple, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
+        <button onClick={() => load(true)} disabled={loading} style={{ marginTop: 10, width: "100%", padding: "9px", borderRadius: 10, border: "1.5px solid #FFD2BA", background: "#fff", color: purple, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>
           {loading ? "生成中..." : "按修改后的饮食更新建议"}
         </button>
       )}
-      {data && !data.ai && !stale && <p style={{ margin: "8px 0 0", fontSize: 11, color: "#C4B5D0" }}>AI 暂时不可用，以上为常见搭配推荐</p>}
+      {data && !data.ai && !stale && <p style={{ margin: "8px 0 0", fontSize: 11, color: "#C9B5A8" }}>AI 暂时不可用，以上为常见搭配推荐</p>}
     </div>
   );
 }

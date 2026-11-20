@@ -4,7 +4,7 @@ import { useState } from "react";
 import type { FoodItem } from "@/lib/meals";
 import { scaleItem, sumItems, unitOf, stepOf, formatCount, setCount, UNITS } from "@/lib/nutrition";
 
-const ink = "#3B1F5E", grey = "#9CA3AF", purple = "#C084FC";
+const ink = "#5B2E1E", grey = "#A67760", purple = "#FF7A45";
 
 /**
  * Totals plus an editable per-food list. People adjust portions in everyday units
@@ -73,24 +73,24 @@ export default function MealEditor({ items, onChange }: { items: FoodItem[]; onC
   }
 
   const input: React.CSSProperties = {
-    padding: "8px 10px", borderRadius: 10, border: "1.5px solid #F3E8FF", fontSize: 14, color: ink, outline: "none", minWidth: 0,
+    padding: "8px 10px", borderRadius: 10, border: "1.5px solid #FFE7D8", fontSize: 14, color: ink, outline: "none", minWidth: 0,
   };
   const stepBtn: React.CSSProperties = {
-    width: 26, height: 26, borderRadius: 8, border: "none", background: "#F5F3FF", color: "#7C3AED",
+    width: 26, height: 26, borderRadius: 8, border: "none", background: "#FFF4EC", color: "#E8622E",
     fontSize: 15, fontWeight: 700, cursor: "pointer", lineHeight: 1, flexShrink: 0,
   };
 
   return (
     <div>
       {/* totals */}
-      <div style={{ textAlign: "center", padding: "6px 0 16px", borderBottom: "1px solid #F9F5FF" }}>
+      <div style={{ textAlign: "center", padding: "6px 0 16px", borderBottom: "1px solid #FFF7F1" }}>
         <span style={{ fontSize: 42, fontWeight: 800, color: purple }}>{totals.calories}</span>
         <span style={{ fontSize: 16, color: grey, marginLeft: 4 }}>kcal</span>
       </div>
       <div style={{ display: "flex", justifyContent: "space-around", padding: "16px 0" }}>
         {[
           { label: "蛋白质", value: totals.protein, color: purple },
-          { label: "碳水", value: totals.carbs, color: "#F9A8D4" },
+          { label: "碳水", value: totals.carbs, color: "#FFB088" },
           { label: "脂肪", value: totals.fat, color: "#FCD34D" },
         ].map(n => (
           <div key={n.label} style={{ textAlign: "center" }}>
@@ -101,7 +101,7 @@ export default function MealEditor({ items, onChange }: { items: FoodItem[]; onC
       </div>
 
       {/* per-food list */}
-      <div style={{ background: "#FCFAFF", borderRadius: 14, padding: "12px 12px 8px" }}>
+      <div style={{ background: "#FFFBF8", borderRadius: 14, padding: "12px 12px 8px" }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 6 }}>
           <p style={{ margin: 0, fontSize: 14, fontWeight: 700, color: ink }}>食材明细</p>
           <p style={{ margin: 0, fontSize: 11, color: grey }}>AI 估算仅供参考，按实际吃的数量改</p>
@@ -110,7 +110,7 @@ export default function MealEditor({ items, onChange }: { items: FoodItem[]; onC
         {items.map((it, i) => {
           const u = unitOf(it);
           return (
-            <div key={i + it.name} style={{ padding: "9px 0", borderBottom: "1px solid #F3E8FF" }}>
+            <div key={i + it.name} style={{ padding: "9px 0", borderBottom: "1px solid #FFE7D8" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ margin: 0, fontSize: 14, color: ink, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{it.name}</p>
@@ -120,7 +120,7 @@ export default function MealEditor({ items, onChange }: { items: FoodItem[]; onC
                       <span title="这道菜不在营养参考表里，热量是 AI 估算的" style={{ marginLeft: 6, fontSize: 10, color: "#B45309", background: "#FEF3C7", borderRadius: 6, padding: "1px 5px", fontWeight: 600 }}>估算</span>
                     )}
                     <button onClick={() => setGramsOpen(gramsOpen === i ? null : i)} aria-label={`${it.name} 按克数修改`}
-                      style={{ marginLeft: 6, padding: 0, border: "none", background: "none", color: "#C4B5D0", fontSize: 11, cursor: "pointer" }}>
+                      style={{ marginLeft: 6, padding: 0, border: "none", background: "none", color: "#C9B5A8", fontSize: 11, cursor: "pointer" }}>
                       · 约 {Math.round(it.grams)}g
                     </button>
                   </p>
@@ -155,8 +155,8 @@ export default function MealEditor({ items, onChange }: { items: FoodItem[]; onC
               {UNITS.map(un => (
                 <button key={un} onClick={() => setUnit(un)} style={{
                   padding: "4px 11px", borderRadius: 999, fontSize: 12, cursor: "pointer",
-                  border: `1.5px solid ${unit === un ? purple : "#F3E8FF"}`,
-                  background: unit === un ? "rgba(192,132,252,0.1)" : "#fff",
+                  border: `1.5px solid ${unit === un ? purple : "#FFE7D8"}`,
+                  background: unit === un ? "rgba(255,122,69,0.1)" : "#fff",
                   color: unit === un ? purple : grey, fontWeight: unit === un ? 700 : 400,
                 }}>{un}</button>
               ))}
@@ -170,7 +170,7 @@ export default function MealEditor({ items, onChange }: { items: FoodItem[]; onC
             {err && <p style={{ margin: 0, fontSize: 12, color: "#EF4444" }}>{err}</p>}
             <div style={{ display: "flex", gap: 8 }}>
               <button onClick={resetAdd} style={{ flex: 1, padding: "9px", borderRadius: 10, border: "none", background: "#F3F4F6", color: grey, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>取消</button>
-              <button onClick={addItem} disabled={busy} style={{ flex: 2, padding: "9px", borderRadius: 10, border: "none", background: busy ? "#E9D5FF" : purple, color: "#fff", fontSize: 13, fontWeight: 600, cursor: busy ? "default" : "pointer" }}>
+              <button onClick={addItem} disabled={busy} style={{ flex: 2, padding: "9px", borderRadius: 10, border: "none", background: busy ? "#FFD2BA" : purple, color: "#fff", fontSize: 13, fontWeight: 600, cursor: busy ? "default" : "pointer" }}>
                 {busy ? "AI 估算中..." : manual ? "按填写的热量添加" : "添加并估算营养"}
               </button>
             </div>

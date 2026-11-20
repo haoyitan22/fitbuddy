@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { getUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
+import PetHero, { Sheet, CoinBadge } from "@/components/PetHero";
 import PetStage, { type PetClip } from "@/components/PetStage";
 import PetAvatar from "@/components/PetAvatar";
 import { getPetMood, getStreak, STREAK_CELEBRATE, petKindOf, petWear, type PetMood } from "@/lib/pets";
@@ -123,24 +124,25 @@ export default function PetPage() {
   }
 
   if (!pet) return (
-    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12, color: "#9CA3AF" }}>
+    <div style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", flexDirection: "column", gap: 12, color: "#A67760" }}>
       <div style={{ fontSize: 48 }}>🐾</div>
       <p>还没有宠物，快去注册领养吧！</p>
     </div>
   );
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg,#FDF4FF 0%,#FFF0F6 100%)", paddingBottom: 88 }}>
+    <div>
       <style>{`
         @keyframes float { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-10px)} }
         @keyframes starFloat { 0%{transform:translateY(0) scale(1);opacity:.8} 100%{transform:translateY(-30px) scale(.6);opacity:0} }
         @keyframes heartFloat { 0%{transform:translateY(0) scale(1);opacity:.9} 100%{transform:translateY(-36px) scale(.5);opacity:0} }
       `}</style>
 
-      <div style={{ maxWidth: 430, margin: "0 auto", padding: "20px 16px 0" }}>
+      <PetHero title={`${user?.petName ?? "宠物"}的小家`} sub={`${pet.species} · 陪你第 ${days} 天`} right={<CoinBadge coins={store.coins} />} height={96}><></></PetHero>
+      <div style={{ padding: "0 16px" }}>
 
         {/* ── 1. Pet card ── */}
-        <div style={{ background: "linear-gradient(135deg,#F3E8FF,#FCE7F3)", borderRadius: 20, padding: "28px 20px 20px", marginBottom: 14, boxShadow: "0 4px 20px rgba(192,132,252,.15)", textAlign: "center", position: "relative", overflow: "hidden" }}>
+        <div style={{ padding: "0 4px 18px", textAlign: "center", position: "relative" }}>
           {/* Pet scene: a background theme fills this area when one is equipped */}
           <div style={{
             minHeight: 250, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 6, position: "relative", marginBottom: 12,
@@ -162,7 +164,7 @@ export default function PetPage() {
                 <img src={equippedItem.img} alt={equippedItem.name} title={equippedItem.name}
                   className={equippedItem.id === "tumbler" && waterDone ? "shop-glow" : undefined}
                   style={{ position: "absolute", right: -34, bottom: -6, width: 78, height: 78, borderRadius: 20, objectFit: "cover",
-                    boxShadow: "0 4px 14px rgba(192,132,252,.35)", border: "3px solid #fff", background: "#FDF4FF", pointerEvents: "none" }} />
+                    boxShadow: "0 4px 14px rgba(255,122,69,.35)", border: "3px solid #fff", background: "#FFF7F1", pointerEvents: "none" }} />
               )}
             </div>
 
@@ -180,27 +182,23 @@ export default function PetPage() {
             )}
           </div>
 
-          {/* Pet info */}
-          <h2 style={{ fontSize:24, fontWeight:800, color:"#3B1F5E", margin:"0 0 4px" }}>{user?.petName}</h2>
-          <p style={{ fontSize:13, color:"#9CA3AF", margin:"0 0 12px" }}>{pet.species} · {pet.desc}</p>
-          <span style={{ background:"linear-gradient(135deg,#C084FC,#F9A8D4)", color:"#fff", borderRadius:20, padding:"4px 16px", fontSize:13, fontWeight:600 }}>
-            加入第 {days} 天
-          </span>
         </div>
 
         {/* Demo panel: open /pet?demo=1 to preview each effect */}
         {demo && (
-          <div style={{ background:"#fff", borderRadius:16, padding:"12px 14px", marginBottom:14, boxShadow:"0 2px 10px rgba(192,132,252,.08)" }}>
-            <p style={{ fontSize:13, fontWeight:600, color:"#3B1F5E", margin:"0 0 8px" }}>动画预览（仅 demo 模式可见）</p>
+          <div style={{ background:"#FFF7F1", borderRadius:20, padding:"12px 14px", marginBottom:14 }}>
+            <p style={{ fontSize:13, fontWeight:600, color:"#5B2E1E", margin:"0 0 8px" }}>动画预览（仅 demo 模式可见）</p>
             <div style={{ display:"grid", gridTemplateColumns:"repeat(4,1fr)", gap:8 }}>
               {([["sport","打卡运动"],["full","吃撑"],["celebrate","连续打卡庆祝"],["tap","被点击"]] as [PetClip,string][]).map(([clip,label]) => (
-                <button key={clip} onClick={() => preview(clip)} style={{ padding:"8px 4px", borderRadius:10, border:"none", background:"#F3E8FF", color:"#7C3AED", fontSize:12, fontWeight:600, cursor:"pointer" }}>{label}</button>
+                <button key={clip} onClick={() => preview(clip)} style={{ padding:"8px 4px", borderRadius:10, border:"none", background:"#FFE7D8", color:"#E8622E", fontSize:12, fontWeight:600, cursor:"pointer" }}>{label}</button>
               ))}
             </div>
-            <button onClick={() => setMood("idle")} style={{ marginTop:8, width:"100%", padding:"6px", borderRadius:10, border:"1px solid #EDE9FE", background:"transparent", color:"#9CA3AF", fontSize:12, cursor:"pointer" }}>恢复默认状态</button>
+            <button onClick={() => setMood("idle")} style={{ marginTop:8, width:"100%", padding:"6px", borderRadius:10, border:"1px solid #FFE7D8", background:"transparent", color:"#A67760", fontSize:12, cursor:"pointer" }}>恢复默认状态</button>
           </div>
         )}
 
+      </div>
+      <Sheet>
         {/* ── 2. Stats bar ── */}
         <div style={{ display:"grid", gridTemplateColumns:"1fr 1fr 1fr", gap:10, marginBottom:14 }}>
           {[
@@ -208,41 +206,41 @@ export default function PetPage() {
             { icon:"📅", value: `${checkinCount}/7`, label:"本周运动打卡" },
             { icon:"⭐", value:"82分", label:"本周饮食评分" },
           ].map(card => (
-            <div key={card.label} style={{ background:"#fff", borderRadius:14, padding:"14px 8px", textAlign:"center", boxShadow:"0 2px 10px rgba(192,132,252,.08)" }}>
+            <div key={card.label} style={{ background:"#FFF7F1", borderRadius:20, padding:"14px 8px", textAlign:"center" }}>
               <div style={{ fontSize:22 }}>{card.icon}</div>
-              <div style={{ fontSize:18, fontWeight:700, color:"#3B1F5E", margin:"4px 0 2px" }}>{card.value}</div>
-              <div style={{ fontSize:10, color:"#9CA3AF", lineHeight:1.3 }}>{card.label}</div>
+              <div style={{ fontSize:18, fontWeight:700, color:"#5B2E1E", margin:"4px 0 2px" }}>{card.value}</div>
+              <div style={{ fontSize:10, color:"#A67760", lineHeight:1.3 }}>{card.label}</div>
             </div>
           ))}
         </div>
 
         {/* ── 3. Current outfit ── */}
-        <div style={{ background:"#fff", borderRadius:16, padding:"16px", marginBottom:14, boxShadow:"0 2px 10px rgba(192,132,252,.08)" }}>
-          <p style={{ fontSize:15, fontWeight:600, color:"#3B1F5E", margin:"0 0 10px" }}>当前装扮</p>
+        <div style={{ background:"#FFF7F1", borderRadius:20, padding:"16px", marginBottom:14 }}>
+          <p style={{ fontSize:15, fontWeight:600, color:"#5B2E1E", margin:"0 0 10px" }}>当前装扮</p>
           {equippedItem || bgItem ? (
             <div style={{ display:"flex", alignItems:"center", justifyContent:"center", gap:8, flexWrap:"wrap" }}>
               <PetAvatar pet={pet} size={56} />
               {[equippedItem, bgItem].filter(Boolean).map(it => (
                 <span key={it!.id} style={{ display:"inline-flex", alignItems:"center", gap:6 }}>
-                  <span style={{ fontSize:20, color:"#9CA3AF" }}>+</span>
+                  <span style={{ fontSize:20, color:"#A67760" }}>+</span>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={it!.img} alt="" style={{ width:48, height:48, borderRadius:12, objectFit:"cover" }} />
-                  <span style={{ fontSize:13, color:"#C084FC", fontWeight:600 }}>{it!.name}</span>
+                  <span style={{ fontSize:13, color:"#FF7A45", fontWeight:600 }}>{it!.name}</span>
                 </span>
               ))}
             </div>
           ) : (
-            <p style={{ textAlign:"center", fontSize:13, color:"#9CA3AF", margin:0 }}>还没有装饰，快去商店看看吧 👇</p>
+            <p style={{ textAlign:"center", fontSize:13, color:"#A67760", margin:0 }}>还没有装饰，快去商店看看吧 👇</p>
           )}
         </div>
 
         {/* ── 4. Shop ── */}
-        <div style={{ background:"#fff", borderRadius:16, padding:"16px", marginBottom:8, boxShadow:"0 2px 10px rgba(192,132,252,.08)" }}>
-          <p style={{ fontSize:15, fontWeight:600, color:"#3B1F5E", margin:"0 0 2px" }}>装饰商店 🛍️</p>
-          <p style={{ fontSize:12, color:"#9CA3AF", margin:"0 0 10px" }}>用金币给 {user?.petName} 买好看的装饰</p>
+        <div style={{ background:"#FFF7F1", borderRadius:20, padding:"16px", marginBottom:8 }}>
+          <p style={{ fontSize:15, fontWeight:600, color:"#5B2E1E", margin:"0 0 2px" }}>装饰商店 🛍️</p>
+          <p style={{ fontSize:12, color:"#A67760", margin:"0 0 10px" }}>用金币给 {user?.petName} 买好看的装饰</p>
           <div style={{ display:"flex", flexWrap:"wrap", gap:6, marginBottom:14 }}>
             {[["记录一餐", COIN_RULES.meal], ["运动打卡", COIN_RULES.checkin], ["喝水达标", COIN_RULES.water], ["连续打卡 7 天", COIN_RULES.streak7]].map(([label, n]) => (
-              <span key={label} style={{ fontSize:11, color:"#7C3AED", background:"#F5F3FF", borderRadius:999, padding:"3px 9px" }}>{label} <b>+{n}</b></span>
+              <span key={label} style={{ fontSize:11, color:"#E8622E", background:"#FFF4EC", borderRadius:999, padding:"3px 9px" }}>{label} <b>+{n}</b></span>
             ))}
           </div>
 
@@ -255,14 +253,14 @@ export default function PetPage() {
               const locked = item.kind === "trophy" && !goalReached && !owned;
 
               let btnText = item.kind === "trophy" ? "领取奖杯" : isFree ? "免费领取" : "购买装扮";
-              let btnBg = "linear-gradient(135deg,#C084FC,#F9A8D4)";
+              let btnBg = "linear-gradient(135deg,#FF7A45,#FFB088)";
               let btnColor = "#fff";
               let btnDisabled = false;
 
               if (equipped) { btnText = "已装扮 ✓"; btnBg = "#D1FAE5"; btnColor = "#059669"; btnDisabled = false; }
-              else if (owned) { btnText = "点击装扮"; btnBg = "#EDE9FE"; btnColor = "#7C3AED"; }
-              else if (locked) { btnText = "达成目标体重解锁"; btnBg = "#F3F4F6"; btnColor = "#9CA3AF"; btnDisabled = true; }
-              else if (!canAfford && !isFree) { btnText = `还差 ${item.price - store.coins} 金币`; btnBg = "#F3F4F6"; btnColor = "#9CA3AF"; btnDisabled = true; }
+              else if (owned) { btnText = "点击装扮"; btnBg = "#FFE7D8"; btnColor = "#E8622E"; }
+              else if (locked) { btnText = "达成目标体重解锁"; btnBg = "#F3F4F6"; btnColor = "#A67760"; btnDisabled = true; }
+              else if (!canAfford && !isFree) { btnText = `还差 ${item.price - store.coins} 金币`; btnBg = "#F3F4F6"; btnColor = "#A67760"; btnDisabled = true; }
 
               return (
                 <div key={item.id} style={{
@@ -280,9 +278,9 @@ export default function PetPage() {
                   <img src={item.img} alt={item.name} loading="lazy"
                     style={{ width:"100%", aspectRatio:"1", objectFit:"cover", borderRadius:10, marginBottom:8, display:"block",
                       filter: locked ? "grayscale(.6) opacity(.7)" : "none" }} />
-                  <p style={{ fontSize:13, fontWeight:700, color:"#3B1F5E", margin:"0 0 2px" }}>{item.name}</p>
-                  <p style={{ fontSize:11, color:"#9CA3AF", margin:"0 0 8px" }}>{item.desc}</p>
-                  <p style={{ fontSize:12, color:"#C084FC", fontWeight:600, margin:"0 0 8px" }}>
+                  <p style={{ fontSize:13, fontWeight:700, color:"#5B2E1E", margin:"0 0 2px" }}>{item.name}</p>
+                  <p style={{ fontSize:11, color:"#A67760", margin:"0 0 8px" }}>{item.desc}</p>
+                  <p style={{ fontSize:12, color:"#FF7A45", fontWeight:600, margin:"0 0 8px" }}>
                     {item.kind === "trophy" ? "成就奖励" : isFree ? "免费" : `🪙 ${item.price}`}
                   </p>
                   <button
@@ -298,7 +296,7 @@ export default function PetPage() {
           </div>
         </div>
 
-      </div>
+      </Sheet>
     </div>
   );
 }

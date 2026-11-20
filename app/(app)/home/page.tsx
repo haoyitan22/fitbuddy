@@ -7,11 +7,10 @@ import { getUser } from "@/lib/auth";
 import { getMeals, getTodayTotals } from "@/lib/meals";
 import type { UserProfile } from "@/lib/auth";
 import type { MealRecord, MealType } from "@/lib/meals";
-import PetAvatar from "@/components/PetAvatar";
-import PetStage from "@/components/PetStage";
+import PetHero, { Sheet, H2, CoinBadge, INK, SUB, ACC, CTA, TILE } from "@/components/PetHero";
 import { CALORIE_GOAL, getPetMood, type PetMood } from "@/lib/pets";
 import { getDailyTargets } from "@/lib/goals";
-import { earnOnce, COIN_RULES, loadStore } from "@/lib/coins";
+import { earnOnce, COIN_RULES, loadStore, COIN_EVENT } from "@/lib/coins";
 import { dayKey } from "@/lib/date";
 
 function getGreeting() {
@@ -24,26 +23,6 @@ function getGreeting() {
 function todayKey() { return "fitbuddy_water_" + dayKey(); }
 function loadWater() { return typeof window === "undefined" ? 0 : Number(localStorage.getItem(todayKey()) ?? 0); }
 function saveWater(ml: number) { localStorage.setItem(todayKey(), String(ml)); }
-
-function CalorieRing({ eaten, goal }: { eaten: number; goal: number }) {
-  const r = 46, circ = 2 * Math.PI * r;
-  const offset = circ * (1 - Math.min(eaten / goal, 1));
-  return (
-    <svg width="120" height="120" style={{ flexShrink: 0 }}>
-      <circle cx="60" cy="60" r={r} fill="none" stroke="#F3E8FF" strokeWidth="10" />
-      <circle cx="60" cy="60" r={r} fill="none" stroke="#C084FC" strokeWidth="10"
-        strokeLinecap="round" strokeDasharray={circ} strokeDashoffset={offset}
-        transform="rotate(-90 60 60)" style={{ transition: "stroke-dashoffset 0.6s ease" }} />
-      <text x="60" y="54" textAnchor="middle" fontSize="20" fontWeight="800" fill="#3B1F5E">{eaten}</text>
-      <text x="60" y="70" textAnchor="middle" fontSize="11" fill="#9CA3AF">/ {goal} kcal</text>
-    </svg>
-  );
-}
-
-const card: React.CSSProperties = {
-  background: "#fff", borderRadius: "16px", padding: "18px 16px",
-  boxShadow: "0 2px 12px rgba(192,132,252,0.10)",
-};
 
 const MEAL_CONFIG: { type: MealType; label: string }[] = [
   { type: "breakfast", label: "早餐" },
@@ -61,7 +40,7 @@ export default function HomePage() {
   const [customInput, setCustomInput] = useState(false);
   const [customVal, setCustomVal] = useState("");
   const [mood, setMood] = useState<PetMood>("idle");
-  const [equipped, setEquipped] = useState<string | null>(null);
+  const [coins, setCoins] = useState(0);
 
   useEffect(() => {
     setUser(getUser());
@@ -70,7 +49,10 @@ export default function HomePage() {
     setGoal(getDailyTargets().calories);
     setWater(loadWater());
     setMood(getPetMood());
-    setEquipped(loadStore().equipped);
+    setCoins(loadStore().coins);
+    const sync = () => setCoins(loadStore().coins);
+    window.addEventListener(COIN_EVENT, sync);
+    return () => window.removeEventListener(COIN_EVENT, sync);
   }, []);
 
   function addWater(ml: number) {
@@ -88,155 +70,128 @@ export default function HomePage() {
   const remaining = Math.max(goal - totals.calories, 0);
   const unrecorded = MEAL_CONFIG.filter(m => !meals.find(r => r.mealType === m.type));
 
+  const pct = Math.min(totals.calories / goal, 1);
+  const R = 46, CIRC = 2 * Math.PI * R;
+  const cups = 8, full = Math.min(cups, Math.floor(water / (WATER_GOAL / cups)));
+  const say = mood === "full"
+    ? "今天吃得有点多，我撑得犯困啦，明天一起动起来～"
+    : unrecorded.length > 0
+      ? `${unrecorded[0].label}还没记录哦～今天还能吃 ${remaining} kcal`
+      : `三餐都记录啦！还剩 ${remaining} kcal，继续保持`;
+
   return (
-    <div style={{ padding: "20px 16px 16px", display: "flex", flexDirection: "column", gap: "14px" }}>
+    <div>
+      <PetHero
+        title={`${getGreeting()}，${user?.nickname ?? "朋友"}`}
+        right={<CoinBadge coins={coins} />}
+        pet={user?.pet} petName={user?.petName} say={say} side="right"
+      />
 
-      {/* 1. 问候区 */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginTop: "4px" }}>
-        <div>
-          <p style={{ margin: 0, fontSize: "13px", color: "#9CA3AF" }}>{getGreeting()}</p>
-          <h1 style={{ margin: "2px 0 0", fontSize: "22px", fontWeight: 700, color: "#3B1F5E" }}>
-            {user?.nickname ?? "朋友"} 👋
-          </h1>
-        </div>
-        {user?.pet && (
-          <Link href="/pet" style={{ textDecoration: "none", display: "flex", flexDirection: "column", alignItems: "center", gap: "3px" }}>
-            <div style={{ width: "52px", height: "52px", borderRadius: "50%", border: "2px solid rgba(192,132,252,0.25)", overflow: "hidden" }}>
-              <PetAvatar pet={user.pet} size={48} crop="head" />
-            </div>
-            <span style={{ fontSize: "11px", color: "#C084FC", fontWeight: 600 }}>{user.petName}</span>
-          </Link>
-        )}
-      </div>
-
-      {/* 2. 今日热量 */}
-      <div style={card}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", margin: "0 0 12px" }}>
-          <p style={{ margin: 0, fontSize: "13px", fontWeight: 600, color: "#3B1F5E" }}>今日热量</p>
-          <a href="/profile#goal" style={{ fontSize: "11px", color: "#C084FC", textDecoration: "none" }}>我的目标 ›</a>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: "20px" }}>
-          <CalorieRing eaten={totals.calories} goal={goal} />
-          <div style={{ display: "flex", flexDirection: "column", gap: "10px", flex: 1 }}>
-            {[
-              { label: "蛋白质", value: `${totals.protein}g`, color: "#C084FC" },
-              { label: "碳水",   value: `${totals.carbs}g`,   color: "#F9A8D4" },
-              { label: "脂肪",   value: `${totals.fat}g`,     color: "#FCD34D" },
-            ].map(m => (
-              <div key={m.label} style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                  <div style={{ width: "8px", height: "8px", borderRadius: "50%", background: m.color }} />
-                  <span style={{ fontSize: "13px", color: "#9CA3AF" }}>{m.label}</span>
-                </div>
-                <span style={{ fontSize: "13px", fontWeight: 600, color: "#3B1F5E" }}>{m.value}</span>
+      <Sheet>
+        {/* 今日热量 */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, padding: 14, borderRadius: 20, background: "linear-gradient(90deg,#FFF3EA,#FFE7D8)" }}>
+          <svg width="108" height="108" viewBox="0 0 108 108" style={{ flexShrink: 0 }} role="img" aria-label={`还能吃 ${remaining} kcal`}>
+            <circle cx="54" cy="54" r={R} fill="none" stroke="#FFFFFF" strokeWidth="11" />
+            <circle cx="54" cy="54" r={R} fill="none" stroke={ACC} strokeWidth="11" strokeLinecap="round"
+              strokeDasharray={CIRC} strokeDashoffset={CIRC * (1 - pct)} transform="rotate(-90 54 54)"
+              style={{ transition: "stroke-dashoffset .6s ease" }} />
+            <text x="54" y="42" textAnchor="middle" fontSize="11" fill={SUB}>还能吃</text>
+            <text x="54" y="64" textAnchor="middle" fontSize="24" fontWeight="800" fill={INK}>{remaining}</text>
+            <text x="54" y="78" textAnchor="middle" fontSize="11" fill={SUB}>kcal</text>
+          </svg>
+          <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
+            {[["已吃", `${totals.calories} kcal`], ["目标", `${goal} kcal`]].map(([a, b]) => (
+              <div key={a} style={{ display: "flex", justifyContent: "space-between", fontSize: 12 }}>
+                <span style={{ color: SUB }}>{a}</span><span style={{ fontWeight: 700, fontSize: 13 }}>{b}</span>
               </div>
             ))}
+            <div style={{ display: "flex", gap: 6 }}>
+              {[["蛋白", totals.protein, "#A78BFA"], ["碳水", totals.carbs, "#FFB86B"], ["脂肪", totals.fat, "#7CC9F0"]].map(([n, v, c]) => (
+                <div key={n as string} style={{ flex: 1, background: "#fff", borderRadius: 12, padding: "6px 8px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10.5, color: SUB }}>
+                    <span style={{ width: 6, height: 6, borderRadius: 3, background: c as string }} />{n}
+                  </div>
+                  <div style={{ fontSize: 13, fontWeight: 700 }}>{v}g</div>
+                </div>
+              ))}
+            </div>
+            <a href="/profile#goal" style={{ fontSize: 11, color: ACC, textDecoration: "none", alignSelf: "flex-end" }}>我的目标 ›</a>
           </div>
         </div>
-      </div>
 
-      {/* 3. 三餐记录 */}
-      <div style={card}>
-        <p style={{ margin: "0 0 12px", fontSize: "13px", fontWeight: 600, color: "#3B1F5E" }}>今日三餐</p>
-        <div style={{ display: "flex", flexDirection: "column", gap: "8px" }}>
+        {/* 今日三餐 */}
+        <H2 action="拍照识别热量">今日三餐</H2>
+        <div style={{ display: "flex", gap: 10 }}>
           {MEAL_CONFIG.map(({ type, label }) => {
             const record = meals.find(m => m.mealType === type);
             return (
-              <div key={type}
-                onClick={() => router.push(`/record?meal=${type}`)}
+              <button key={type} type="button" onClick={() => router.push(`/record?meal=${type}`)}
                 style={{
-                  display: "flex", alignItems: "center", justifyContent: "space-between",
-                  padding: "12px 14px", borderRadius: "12px", cursor: "pointer",
-                  background: record ? "rgba(192,132,252,0.07)" : "#FAFAFA",
-                  border: record ? "1px solid rgba(192,132,252,0.15)" : "1px solid #F3F4F6",
+                  flex: 1, minWidth: 0, textAlign: "left", border: "none", cursor: "pointer", borderRadius: 20, padding: 12,
+                  display: "flex", flexDirection: "column", gap: 6,
+                  background: record ? TILE : CTA, color: record ? INK : "#fff",
+                  boxShadow: record ? "none" : "0 8px 16px rgba(255,122,69,0.25)",
                 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
-                  {record?.imageBase64 && (
-                    <img src={record.imageBase64} alt="" style={{ width: "40px", height: "40px", borderRadius: "8px", objectFit: "cover" }} />
-                  )}
-                  <div>
-                    <span style={{ fontSize: "14px", fontWeight: 600, color: "#3B1F5E" }}>{label}</span>
-                    {record && <p style={{ margin: "2px 0 0", fontSize: "12px", color: "#9CA3AF" }}>{record.foods}</p>}
-                  </div>
-                </div>
-                {record ? (
-                  <span style={{ fontSize: "13px", fontWeight: 700, color: "#C084FC", flexShrink: 0 }}>{record.calories} kcal</span>
+                {record?.imageBase64 ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={record.imageBase64} alt="" style={{ width: 30, height: 30, borderRadius: 10, objectFit: "cover" }} />
                 ) : (
-                  <span style={{ fontSize: "13px", fontWeight: 600, color: "#C084FC", background: "rgba(192,132,252,0.1)", padding: "4px 10px", borderRadius: "8px", flexShrink: 0 }}>+ 记录</span>
+                  <span style={{ width: 30, height: 30, borderRadius: 15, display: "flex", alignItems: "center", justifyContent: "center", background: record ? "#fff" : "rgba(255,255,255,0.25)" }}>
+                    {record
+                      ? <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke={ACC} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>
+                      : <svg aria-hidden="true" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 8h3l2-3h6l2 3h3v11H4zM12 16.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7z" /></svg>}
+                  </span>
                 )}
-              </div>
+                <span style={{ fontSize: 14, fontWeight: 700 }}>{label}</span>
+                <span style={{ fontSize: 12, fontWeight: 700, color: record ? ACC : "#fff", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {record ? `${record.calories} kcal` : "+ 拍一拍"}
+                </span>
+              </button>
             );
           })}
         </div>
-      </div>
 
-      {/* 4. 饮水 */}
-      <div style={card}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "12px" }}>
-          <span style={{ fontSize: "13px", fontWeight: 600, color: "#3B1F5E" }}>💧 今日饮水</span>
-          <span style={{ fontSize: "13px", color: "#9CA3AF" }}>{water} / {WATER_GOAL} ml</span>
-        </div>
-        <div style={{ height: "8px", background: "#FDE8F0", borderRadius: "8px", marginBottom: "14px", overflow: "hidden" }}>
-          <div style={{ height: "100%", width: `${Math.min(water/WATER_GOAL,1)*100}%`, background: "#F9A8D4", borderRadius: "8px", transition: "width 0.4s ease" }} />
-        </div>
-        {!customInput ? (
-          <div style={{ display: "flex", gap: "8px" }}>
-            {[100,200,350].map(ml => (
-              <button key={ml} onClick={() => addWater(ml)} style={{ flex: 1, padding: "8px 0", borderRadius: "10px", border: "1.5px solid #F9A8D4", background: "#fff", fontSize: "13px", fontWeight: 600, color: "#C084FC", cursor: "pointer" }}>
-                +{ml}ml
-              </button>
+        {/* 喝水 */}
+        <H2 action={`${water} / ${WATER_GOAL} ml`}>喝水</H2>
+        <div style={{ background: TILE, borderRadius: 20, padding: 12, display: "flex", flexDirection: "column", gap: 10 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }} aria-label={`已喝 ${water} 毫升`}>
+            {Array.from({ length: cups }).map((_, i) => (
+              <span key={i} aria-hidden="true" style={{
+                width: 22, height: 30, borderRadius: "8px 8px 10px 10px",
+                background: i < full ? "linear-gradient(180deg,#BFE6F8,#7CC9F0)" : "#fff",
+                border: i < full ? "none" : "1.5px solid #CFE9F6",
+              }} />
             ))}
-            <button onClick={() => setCustomInput(true)} style={{ flex: 1, padding: "8px 0", borderRadius: "10px", border: "1.5px solid #F3E8FF", background: "#fff", fontSize: "12px", color: "#9CA3AF", cursor: "pointer" }}>
-              自定义
-            </button>
+            <span style={{ flex: 1 }} />
+            {!customInput && (
+              <button type="button" onClick={() => addWater(225)} style={{ border: "none", cursor: "pointer", background: INK, color: "#fff", borderRadius: 999, padding: "7px 12px", fontSize: 12, fontWeight: 700 }}>+ 一杯</button>
+            )}
           </div>
-        ) : (
-          <div style={{ display: "flex", gap: "8px" }}>
-            <input type="number" placeholder="ml" value={customVal} onChange={e => setCustomVal(e.target.value)}
-              style={{ flex: 1, padding: "8px 12px", borderRadius: "10px", border: "1.5px solid #F9A8D4", fontSize: "14px", color: "#3B1F5E", outline: "none" }}
-              autoFocus onKeyDown={e => e.key==="Enter" && handleCustom()} />
-            <button onClick={handleCustom} style={{ padding: "8px 16px", borderRadius: "10px", background: "#C084FC", color: "#fff", border: "none", fontWeight: 600, fontSize: "13px", cursor: "pointer" }}>确认</button>
-            <button onClick={() => { setCustomInput(false); setCustomVal(""); }} style={{ padding: "8px 12px", borderRadius: "10px", background: "#F3F4F6", color: "#9CA3AF", border: "none", fontSize: "13px", cursor: "pointer" }}>取消</button>
-          </div>
-        )}
-      </div>
-
-      {/* 5. AI 建议 */}
-      <div style={{ ...card, background: "linear-gradient(135deg,rgba(192,132,252,0.12) 0%,rgba(249,168,212,0.12) 100%)", border: "1px solid rgba(192,132,252,0.15)" }}>
-        <div style={{ display: "flex", gap: "12px", alignItems: "flex-start" }}>
-          <span style={{ fontSize: "24px", flexShrink: 0 }}>💡</span>
-          <div>
-            <p style={{ margin: "0 0 6px", fontSize: "13px", fontWeight: 700, color: "#3B1F5E" }}>今日建议</p>
-            <p style={{ margin: 0, fontSize: "13px", color: "#6B4F8A", lineHeight: "1.6" }}>
-              {unrecorded.length > 0
-                ? `${unrecorded.map(m=>m.label).join("、")}还没记录，今天还剩 `
-                : "三餐都记录啦！今天还剩 "}
-              <strong style={{ color: "#C084FC" }}>{remaining} kcal</strong>
-              {unrecorded.length > 0 ? "，记得按时吃饭 🥗" : "，继续保持 💪"}
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* 6. 宠物状态 */}
-      {user?.pet && (
-        <Link href="/pet" style={{ textDecoration: "none" }}>
-          <div style={{ ...card, background: "linear-gradient(135deg,#FFF0F6 0%,#FDF4FF 100%)", border: "1px solid rgba(249,168,212,0.3)", display: "flex", alignItems: "center", gap: "14px", cursor: "pointer" }}>
-            <PetStage pet={user.pet} size={76} mood={mood} interactive={false} wear={equipped} />
-            <div style={{ flex: 1 }}>
-              <p style={{ margin: "0 0 4px", fontSize: "14px", fontWeight: 700, color: "#3B1F5E" }}>{user.petName}</p>
-              <p style={{ margin: 0, fontSize: "12px", color: "#9CA3AF", lineHeight: "1.5" }}>
-                {mood === "full"
-                  ? "今天吃得有点多，我撑得犯困啦，明天一起动起来～"
-                  : unrecorded.length > 0
-                    ? `${unrecorded[0].label}还没记录，快来喂我吃饭吧！`
-                    : "今天所有餐食都记录啦，棒棒的！🎉"}
-              </p>
+          {!customInput ? (
+            <div style={{ display: "flex", gap: 8 }}>
+              {[100, 200, 350].map(ml => (
+                <button key={ml} type="button" onClick={() => addWater(ml)} style={{ flex: 1, padding: "7px 0", borderRadius: 999, border: "none", background: "#fff", fontSize: 12.5, fontWeight: 600, color: INK, cursor: "pointer" }}>+{ml}</button>
+              ))}
+              <button type="button" onClick={() => setCustomInput(true)} style={{ flex: 1, padding: "7px 0", borderRadius: 999, border: "none", background: "#fff", fontSize: 12.5, color: SUB, cursor: "pointer" }}>自定义</button>
             </div>
-            <span style={{ fontSize: "16px", color: "#F9A8D4" }}>›</span>
-          </div>
-        </Link>
-      )}
+          ) : (
+            <div style={{ display: "flex", gap: 8 }}>
+              <input type="number" inputMode="numeric" placeholder="毫升" aria-label="喝了多少毫升" value={customVal} onChange={e => setCustomVal(e.target.value)}
+                style={{ flex: 1, minWidth: 0, padding: "8px 12px", borderRadius: 999, border: "1.5px solid #FFD2BA", fontSize: 14, color: INK, outline: "none" }}
+                autoFocus onKeyDown={e => e.key === "Enter" && handleCustom()} />
+              <button type="button" onClick={handleCustom} style={{ padding: "8px 16px", borderRadius: 999, background: ACC, color: "#fff", border: "none", fontWeight: 700, fontSize: 13, cursor: "pointer" }}>确认</button>
+              <button type="button" onClick={() => { setCustomInput(false); setCustomVal(""); }} style={{ padding: "8px 12px", borderRadius: 999, background: "#fff", color: SUB, border: "none", fontSize: 13, cursor: "pointer" }}>取消</button>
+            </div>
+          )}
+        </div>
+
+        {user?.pet && (
+          <Link href="/pet" style={{ textDecoration: "none", display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 14px", borderRadius: 18, background: "#FFF1C2", color: INK, fontSize: 13 }}>
+            <span>去看看 <b>{user.petName}</b> 的小家，做健康小事赚金币</span>
+            <span style={{ color: ACC, fontWeight: 700 }}>›</span>
+          </Link>
+        )}
+      </Sheet>
     </div>
   );
 }

@@ -1,12 +1,12 @@
 @import "tailwindcss";
 
 :root {
-  --color-primary: #C084FC;
-  --color-secondary: #F9A8D4;
-  --color-bg: #FDF4FF;
+  --color-primary: #FF7A45;
+  --color-secondary: #FFB088;
+  --color-bg: #FFF7F1;
   --color-card: #FFFFFF;
-  --color-text-main: #3B1F5E;
-  --color-text-sub: #9CA3AF;
+  --color-text-main: #5B2E1E;
+  --color-text-sub: #A67760;
 }
 
 * {
@@ -21,7 +21,7 @@ html, body {
 }
 
 body {
-  background: linear-gradient(180deg, #FDF4FF 0%, #FFF0F6 100%);
+  background: #FFF4EA;
   min-height: 100vh;
   color: var(--color-text-main);
 }

@@ -27,11 +27,11 @@ export default function CoinToast() {
       {toasts.map(t => (
         <div key={t.id} className="coin-toast" style={{
           background: "#fff", borderRadius: 999, padding: "8px 16px",
-          boxShadow: "0 4px 18px rgba(192,132,252,0.3)",
-          fontSize: 14, fontWeight: 700, color: "#3B1F5E", whiteSpace: "nowrap",
+          boxShadow: "0 4px 18px rgba(255,122,69,0.3)",
+          fontSize: 14, fontWeight: 700, color: "#5B2E1E", whiteSpace: "nowrap",
         }}>
-          🪙 <span style={{ color: "#C084FC" }}>+{t.amount} 金币</span>
-          <span style={{ color: "#9CA3AF", fontWeight: 500 }}> · {t.reason}</span>
+          🪙 <span style={{ color: "#FF7A45" }}>+{t.amount} 金币</span>
+          <span style={{ color: "#A67760", fontWeight: 500 }}> · {t.reason}</span>
         </div>
       ))}
     </div>

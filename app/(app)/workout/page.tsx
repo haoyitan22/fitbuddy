@@ -7,6 +7,7 @@ import type { Pet } from "@/lib/auth";
 import PetStage from "@/components/PetStage";
 import { getStreak, STREAK_CELEBRATE } from "@/lib/pets";
 import { earnOnce, COIN_RULES } from "@/lib/coins";
+import PetHero, { Sheet, H2, INK, SUB, ACC, CTA, TILE } from "@/components/PetHero";
 import { dayKey } from "@/lib/date";
 
 type BodyPart = "full" | "abs" | "legs" | "arms";
@@ -78,7 +79,7 @@ function saveCheckin(date: string) {
   }
 }
 
-const CONFETTI_COLORS = ["#C084FC", "#F9A8D4", "#FCD34D", "#6EE7B7", "#93C5FD"];
+const CONFETTI_COLORS = ["#FF7A45", "#FFB088", "#FCD34D", "#6EE7B7", "#93C5FD"];
 
 export default function WorkoutPage() {
   const [selected, setSelected] = useState<BodyPart>("full");
@@ -130,12 +131,12 @@ export default function WorkoutPage() {
   }
 
   return (
-    <div style={{ minHeight: "100vh", background: "linear-gradient(135deg, #FDF4FF 0%, #FFF0F6 100%)", paddingBottom: "80px" }}>
+    <div>
       {/* Celebration overlay */}
       {celebrating && (
         <div onClick={() => setCelebrating(false)} style={{
           position: "fixed", inset: 0, zIndex: 1000,
-          background: "rgba(253,244,255,0.95)",
+          background: "rgba(255,247,241,0.95)",
           display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
         }}>
           <div style={{ marginBottom: "16px", position: "relative", zIndex: 1 }}>
@@ -143,10 +144,10 @@ export default function WorkoutPage() {
               mood={overlayClip === "sport" ? "sport" : "idle"}
               trigger={{ clip: overlayClip, id: 1 }} />
           </div>
-          <div style={{ fontSize: "28px", fontWeight: 700, color: "#3B1F5E", marginBottom: "8px" }}>
+          <div style={{ fontSize: "28px", fontWeight: 700, color: "#5B2E1E", marginBottom: "8px" }}>
             {overlayClip === "celebrate" ? `连续打卡 ${streakDays} 天！🎉` : `${petName} 为你骄傲！🎉`}
           </div>
-          <div style={{ fontSize: "16px", color: "#9CA3AF" }}>
+          <div style={{ fontSize: "16px", color: "#A67760" }}>
             {overlayClip === "celebrate" ? `${petName}开心得跳起来啦，继续保持！` : "今天又完成运动打卡，棒棒的！"}
           </div>
           {/* Confetti */}
@@ -172,54 +173,54 @@ export default function WorkoutPage() {
         </div>
       )}
 
-      <div style={{ maxWidth: "430px", margin: "0 auto", padding: "20px 16px 0" }}>
-        {/* Header */}
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "20px" }}>
-          <div>
-            <h1 style={{ fontSize: "22px", fontWeight: 700, color: "#3B1F5E", margin: 0 }}>今日运动 💪</h1>
-          </div>
-          <div style={{
-            background: "linear-gradient(135deg, #C084FC, #F9A8D4)",
-            borderRadius: "20px", padding: "6px 14px",
-            fontSize: "13px", fontWeight: 600, color: "#fff",
-          }}>
-            本周已打卡 {weekCheckins} 天
-          </div>
+      <PetHero
+        title="今日运动"
+        right={<span style={{ display: "inline-flex", alignItems: "center", gap: 4, padding: "5px 11px", borderRadius: 999, background: "#fff", fontSize: 12, fontWeight: 700, color: ACC, flexShrink: 0 }}>本周打卡 {weekCheckins} 天</span>}
+        pet={pet} petName={petName} side="left"
+        say={checkedIn ? "今天已经打卡啦，你真棒！明天继续～" : `今天练${BODY_PARTS.find(b => b.key === selected)?.label ?? "一下"}好不好？练完打卡我会换上运动装！`}
+      />
+      <Sheet>
+        {/* This week */}
+        <div style={{ display: "flex", justifyContent: "space-between" }} aria-label={`本周已打卡 ${weekCheckins} 天`}>
+          {weekDates.map((date, i) => {
+            const done = checkedDates.includes(date);
+            const isToday = date === todayKey();
+            return (
+              <div key={date} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "8px 7px", borderRadius: 14, background: isToday ? INK : TILE }}>
+                <span style={{ fontSize: 11, color: isToday ? "#E8CBBB" : SUB }}>{weekLabels[i]}</span>
+                <span style={{ width: 22, height: 22, borderRadius: 11, display: "flex", alignItems: "center", justifyContent: "center", background: done ? ACC : isToday ? "#fff" : "#FFE7D8" }}>
+                  {done && <svg aria-hidden="true" width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3.4" strokeLinecap="round" strokeLinejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5" /></svg>}
+                </span>
+              </div>
+            );
+          })}
         </div>
 
-        {/* Body part selector */}
-        <div style={{
-          background: "#fff", borderRadius: "16px",
-          padding: "16px", marginBottom: "16px",
-          boxShadow: "0 2px 12px rgba(192,132,252,0.08)",
-        }}>
-          <p style={{ fontSize: "15px", fontWeight: 600, color: "#3B1F5E", margin: "0 0 12px" }}>今天练哪里？</p>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "10px" }}>
-            {BODY_PARTS.map(bp => (
-              <button key={bp.key} onClick={() => setSelected(bp.key)} style={{
-                padding: "14px 10px", borderRadius: "12px", border: "none", cursor: "pointer",
-                background: selected === bp.key ? "#F3E8FF" : "#F9FAFB",
-                outline: selected === bp.key ? "2px solid #C084FC" : "2px solid transparent",
-                display: "flex", alignItems: "center", gap: "8px",
-                fontSize: "14px", fontWeight: selected === bp.key ? 600 : 400,
-                color: selected === bp.key ? "#7C3AED" : "#6B7280",
-                transition: "all 0.2s",
+        <H2>今天练哪里</H2>
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+          {BODY_PARTS.map(bp => {
+            const on = selected === bp.key;
+            return (
+              <button key={bp.key} type="button" onClick={() => setSelected(bp.key)} aria-pressed={on} style={{
+                padding: "14px 12px", borderRadius: 18, border: "none", cursor: "pointer", textAlign: "left",
+                background: on ? CTA : TILE, color: on ? "#fff" : INK,
+                boxShadow: on ? "0 8px 16px rgba(255,122,69,0.25)" : "none",
+                display: "flex", alignItems: "center", gap: 8, fontSize: 14, fontWeight: 700,
               }}>
-                <span style={{ fontSize: "20px" }}>{bp.emoji}</span>
+                <span style={{ fontSize: 20 }} aria-hidden="true">{bp.emoji}</span>
                 {bp.label}
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
 
         {/* Video list */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "16px", marginBottom: "20px" }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
           {VIDEOS[selected].map(video => {
             const done = completedVideos.has(video.id);
             return (
               <div key={video.id} style={{
-                background: "#fff", borderRadius: "16px", overflow: "hidden",
-                boxShadow: "0 2px 12px rgba(192,132,252,0.08)",
+                background: TILE, borderRadius: "20px", overflow: "hidden",
               }}>
                 {/* YouTube embed */}
                 <div style={{ position: "relative", paddingTop: "56.25%" }}>
@@ -232,7 +233,7 @@ export default function WorkoutPage() {
                 </div>
                 {/* Info */}
                 <div style={{ padding: "12px 14px" }}>
-                  <p style={{ fontSize: "14px", fontWeight: 700, color: "#3B1F5E", margin: "0 0 8px" }}>{video.title}</p>
+                  <p style={{ fontSize: "14px", fontWeight: 700, color: "#5B2E1E", margin: "0 0 8px" }}>{video.title}</p>
                   <div style={{ display: "flex", gap: "8px", marginBottom: "12px" }}>
                     <span style={{
                       background: "#F3F4F6", borderRadius: "20px", padding: "2px 10px",
@@ -246,13 +247,13 @@ export default function WorkoutPage() {
                     }}>{video.level}</span>
                   </div>
                   <button onClick={() => handleCheckin(video.id)} disabled={done} style={{
-                    width: "100%", padding: "10px", borderRadius: "10px", border: "none", cursor: done ? "default" : "pointer",
-                    background: done ? "#F3F4F6" : "linear-gradient(135deg, #C084FC, #F9A8D4)",
-                    color: done ? "#9CA3AF" : "#fff",
+                    width: "100%", padding: "10px", borderRadius: "999px", border: "none", cursor: done ? "default" : "pointer",
+                    background: done ? "#FFE7D8" : INK,
+                    color: done ? "#A67760" : "#fff",
                     fontSize: "14px", fontWeight: 600,
                     transition: "all 0.2s",
                   }}>
-                    {done ? "已完成 🎉" : "✅ 完成打卡"}
+                    {done ? "已完成 🎉" : "练完了，打卡 +20 金币"}
                   </button>
                 </div>
               </div>
@@ -260,32 +261,7 @@ export default function WorkoutPage() {
           })}
         </div>
 
-        {/* Weekly record */}
-        <div style={{
-          background: "#fff", borderRadius: "16px", padding: "16px",
-          boxShadow: "0 2px 12px rgba(192,132,252,0.08)", marginBottom: "8px",
-        }}>
-          <p style={{ fontSize: "15px", fontWeight: 600, color: "#3B1F5E", margin: "0 0 12px" }}>本周打卡记录</p>
-          <div style={{ display: "flex", justifyContent: "space-between" }}>
-            {weekDates.map((date, i) => {
-              const done = checkedDates.includes(date);
-              return (
-                <div key={date} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "4px" }}>
-                  <div style={{
-                    width: "36px", height: "36px", borderRadius: "50%",
-                    background: done ? "linear-gradient(135deg, #C084FC, #F9A8D4)" : "#F3F4F6",
-                    display: "flex", alignItems: "center", justifyContent: "center",
-                    fontSize: "16px",
-                  }}>
-                    {done ? "✓" : ""}
-                  </div>
-                  <span style={{ fontSize: "11px", color: "#9CA3AF" }}>周{weekLabels[i]}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      </div>
+      </Sheet>
     </div>
   );
 }

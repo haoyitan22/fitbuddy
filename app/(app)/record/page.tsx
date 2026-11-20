@@ -191,20 +191,20 @@ export default function RecordPage() {
 
       {/* 标题 */}
       <div style={{ marginTop: "4px" }}>
-        <h1 style={{ fontSize: "20px", fontWeight: 700, color: "#3B1F5E", margin: 0 }}>记录饮食</h1>
-        <p style={{ fontSize: "13px", color: "#9CA3AF", marginTop: "4px" }}>拍照或选相册里的照片，AI 自动分析营养成分</p>
+        <h1 style={{ fontSize: "20px", fontWeight: 700, color: "#5B2E1E", margin: 0 }}>记录饮食</h1>
+        <p style={{ fontSize: "13px", color: "#A67760", marginTop: "4px" }}>拍照或选相册里的照片，AI 自动分析营养成分</p>
       </div>
 
       {/* 选餐次 */}
-      <div style={{ background: "#fff", borderRadius: "16px", padding: "16px", boxShadow: "0 2px 12px rgba(192,132,252,0.08)" }}>
-        <p style={{ margin: "0 0 10px", fontSize: "13px", color: "#9CA3AF", fontWeight: 600 }}>选择餐次</p>
+      <div style={{ background: "#fff", borderRadius: "16px", padding: "16px", boxShadow: "0 2px 12px rgba(255,122,69,0.08)" }}>
+        <p style={{ margin: "0 0 10px", fontSize: "13px", color: "#A67760", fontWeight: 600 }}>选择餐次</p>
         <div style={{ display: "flex", gap: "8px" }}>
           {(["breakfast","lunch","dinner"] as MealType[]).map(t => (
             <button key={t} onClick={() => selectMeal(t)} style={{
               flex: 1, padding: "10px 0", borderRadius: "12px",
-              border: `1.5px solid ${mealType===t?"#C084FC":"#F3E8FF"}`,
-              background: mealType===t?"rgba(192,132,252,0.1)":"#fff",
-              color: mealType===t?"#C084FC":"#9CA3AF",
+              border: `1.5px solid ${mealType===t?"#FF7A45":"#FFE7D8"}`,
+              background: mealType===t?"rgba(255,122,69,0.1)":"#fff",
+              color: mealType===t?"#FF7A45":"#A67760",
               fontSize: "14px", fontWeight: mealType===t?700:400, cursor: "pointer",
             }}>
               {MEAL_LABELS[t]}
@@ -215,24 +215,24 @@ export default function RecordPage() {
 
       {/* 已记录：查看 / 修改这餐 */}
       {viewing && items && (
-        <div style={{ background: "#fff", borderRadius: "16px", overflow: "hidden", boxShadow: "0 2px 16px rgba(192,132,252,0.12)" }}>
+        <div style={{ background: "#fff", borderRadius: "16px", overflow: "hidden", boxShadow: "0 2px 16px rgba(255,122,69,0.12)" }}>
           {viewing.imageBase64 && (
             <img src={viewing.imageBase64} alt="food" style={{ width: "100%", maxHeight: "280px", objectFit: "cover", display: "block" }} />
           )}
           <div style={{ padding: "20px" }}>
-            <p style={{ margin: "0 0 10px", fontSize: "13px", color: "#9CA3AF", fontWeight: 600 }}>
+            <p style={{ margin: "0 0 10px", fontSize: "13px", color: "#A67760", fontWeight: 600 }}>
               今天的{MEAL_LABELS[mealType]} {saved ? <span style={{ color: "#10B981" }}>· 已保存 ✓</span> : "· 已记录"}
             </p>
             <MealEditor items={items} onChange={setItems} />
             {dirty && (
-              <button onClick={handleUpdate} disabled={!items.length} style={{ ...btn, marginTop: "16px", background: "#C084FC", color: "#fff", boxShadow: "0 4px 16px rgba(192,132,252,0.35)" }}>
+              <button onClick={handleUpdate} disabled={!items.length} style={{ ...btn, marginTop: "16px", background: "#FF7A45", color: "#fff", boxShadow: "0 4px 16px rgba(255,122,69,0.35)" }}>
                 保存修改 ✓
               </button>
             )}
-            <button onClick={retake} style={{ ...btn, marginTop: "12px", background: "#F9F5FF", color: "#9CA3AF" }}>
+            <button onClick={retake} style={{ ...btn, marginTop: "12px", background: "#FFF7F1", color: "#A67760" }}>
               换一张照片，替换这条记录
             </button>
-            <button onClick={() => router.push("/home")} style={{ ...btn, marginTop: "8px", background: dirty ? "#F3F4F6" : "#C084FC", color: dirty ? "#9CA3AF" : "#fff" }}>
+            <button onClick={() => router.push("/home")} style={{ ...btn, marginTop: "8px", background: dirty ? "#F3F4F6" : "#FF7A45", color: dirty ? "#A67760" : "#fff" }}>
               {dirty ? "不保存，返回首页" : "返回首页"}
             </button>
           </div>
@@ -243,19 +243,19 @@ export default function RecordPage() {
       {!viewing && <div onClick={() => fileRef.current?.click()} style={{
         background: imagePreview ? "transparent" : "#fff",
         borderRadius: "16px",
-        border: imagePreview ? "none" : "2px dashed #F3E8FF",
+        border: imagePreview ? "none" : "2px dashed #FFE7D8",
         minHeight: "200px", display: "flex", flexDirection: "column",
         alignItems: "center", justifyContent: "center",
         cursor: "pointer", overflow: "hidden",
-        boxShadow: "0 2px 12px rgba(192,132,252,0.08)",
+        boxShadow: "0 2px 12px rgba(255,122,69,0.08)",
       }}>
         {imagePreview ? (
           <img src={imagePreview} alt="food" style={{ width: "100%", borderRadius: "16px", maxHeight: "280px", objectFit: "cover" }} />
         ) : (
           <>
             <div style={{ fontSize: "48px", marginBottom: "12px" }}>📷</div>
-            <p style={{ fontSize: "15px", fontWeight: 600, color: "#C084FC", margin: 0 }}>拍照或从相册选择</p>
-            <p style={{ fontSize: "12px", color: "#C4B5D0", marginTop: "4px" }}>支持 JPG、PNG、HEIC</p>
+            <p style={{ fontSize: "15px", fontWeight: 600, color: "#FF7A45", margin: 0 }}>拍照或从相册选择</p>
+            <p style={{ fontSize: "12px", color: "#C9B5A8", marginTop: "4px" }}>支持 JPG、PNG、HEIC</p>
           </>
         )}
       </div>}
@@ -265,22 +265,22 @@ export default function RecordPage() {
 
       {/* 重新选择 */}
       {imagePreview && !items && (
-        <button onClick={reset} style={{ ...btn, background: "#F9F5FF", color: "#9CA3AF" }}>重新选择图片</button>
+        <button onClick={reset} style={{ ...btn, background: "#FFF7F1", color: "#A67760" }}>重新选择图片</button>
       )}
 
       {/* 分析按钮 */}
       {imagePreview && !items && (
         <button onClick={handleAnalyze} disabled={analyzing} style={{
           ...btn,
-          background: analyzing ? "#E9D5FF" : "#C084FC", color: "#fff",
-          boxShadow: analyzing ? "none" : "0 4px 16px rgba(192,132,252,0.35)",
+          background: analyzing ? "#FFD2BA" : "#FF7A45", color: "#fff",
+          boxShadow: analyzing ? "none" : "0 4px 16px rgba(255,122,69,0.35)",
         }}>
           {analyzing ? "✨ AI 分析中..." : "✨ 开始分析"}
         </button>
       )}
 
       {analyzing && (
-        <p style={{ textAlign: "center", fontSize: "13px", color: "#9CA3AF", animation: "pulse 1.5s infinite" }}>
+        <p style={{ textAlign: "center", fontSize: "13px", color: "#A67760", animation: "pulse 1.5s infinite" }}>
           正在识别食物，估算卡路里...
           <style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}`}</style>
         </p>
@@ -289,18 +289,18 @@ export default function RecordPage() {
       {error && (
         <div style={{ background: "#FEF2F2", borderRadius: "12px", padding: "14px", textAlign: "center" }}>
           <p style={{ margin: 0, fontSize: "14px", color: "#EF4444" }}>{error}</p>
-          <button onClick={handleAnalyze} style={{ marginTop: "8px", background: "none", border: "none", color: "#C084FC", fontSize: "13px", cursor: "pointer", fontWeight: 600 }}>重试</button>
+          <button onClick={handleAnalyze} style={{ marginTop: "8px", background: "none", border: "none", color: "#FF7A45", fontSize: "13px", cursor: "pointer", fontWeight: 600 }}>重试</button>
         </div>
       )}
 
       {/* 分析结果：可修正 */}
       {items && !viewing && (
-        <div style={{ background: "#fff", borderRadius: "16px", padding: "20px", boxShadow: "0 2px 16px rgba(192,132,252,0.12)" }}>
+        <div style={{ background: "#fff", borderRadius: "16px", padding: "20px", boxShadow: "0 2px 16px rgba(255,122,69,0.12)" }}>
           <MealEditor items={items} onChange={setItems} />
-          <button onClick={handleSave} disabled={!items.length} style={{ ...btn, marginTop: "20px", background: items.length ? "#C084FC" : "#E9D5FF", color: "#fff", boxShadow: "0 4px 16px rgba(192,132,252,0.35)" }}>
+          <button onClick={handleSave} disabled={!items.length} style={{ ...btn, marginTop: "20px", background: items.length ? "#FF7A45" : "#FFD2BA", color: "#fff", boxShadow: "0 4px 16px rgba(255,122,69,0.35)" }}>
             保存到{MEAL_LABELS[mealType]}记录 ✓
           </button>
-          <button onClick={reset} style={{ ...btn, marginTop: "8px", background: "#F9F5FF", color: "#9CA3AF" }}>
+          <button onClick={reset} style={{ ...btn, marginTop: "8px", background: "#FFF7F1", color: "#A67760" }}>
             换一张照片
           </button>
         </div>

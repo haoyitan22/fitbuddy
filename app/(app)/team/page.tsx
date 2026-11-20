@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { getUser } from "@/lib/auth";
 import type { UserProfile } from "@/lib/auth";
 import PetAvatar from "@/components/PetAvatar";
+import PetHero, { Sheet, INK, SUB, ACC } from "@/components/PetHero";
 import { getMeals } from "@/lib/meals";
 import { getCheckinDates, todayStr } from "@/lib/pets";
 import { MEAL_LABELS } from "@/lib/nutrition";
@@ -35,7 +36,7 @@ interface FeedItem {
 function Toast({ msg, onDone }: { msg: string; onDone: () => void }) {
   useEffect(() => { const t = setTimeout(onDone, 3000); return () => clearTimeout(t); }, [onDone]);
   return (
-    <div style={{ position:"fixed", top:16, left:"50%", transform:"translateX(-50%)", background:"#fff", borderRadius:12, padding:"12px 20px", boxShadow:"0 4px 20px rgba(0,0,0,.15)", fontSize:13, color:"#3B1F5E", zIndex:2000, maxWidth:340, textAlign:"center", lineHeight:1.5 }}>
+    <div style={{ position:"fixed", top:16, left:"50%", transform:"translateX(-50%)", background:"#fff", borderRadius:12, padding:"12px 20px", boxShadow:"0 4px 20px rgba(0,0,0,.15)", fontSize:13, color:"#5B2E1E", zIndex:2000, maxWidth:340, textAlign:"center", lineHeight:1.5 }}>
       {msg}
     </div>
   );
@@ -48,7 +49,7 @@ function Drawer({ title, onClose, children }: { title: string; onClose: () => vo
       <div onClick={onClose} style={{ position:"absolute", inset:0, background:"rgba(0,0,0,.4)" }} />
       <div style={{ position:"absolute", bottom:0, left:"50%", transform:"translateX(-50%)", width:"100%", maxWidth:430, background:"#fff", borderRadius:"20px 20px 0 0", padding:"24px 20px 40px" }}>
         <div style={{ width:40, height:4, background:"#E5E7EB", borderRadius:4, margin:"0 auto 20px" }} />
-        <h3 style={{ fontSize:18, fontWeight:700, color:"#3B1F5E", margin:"0 0 20px", textAlign:"center" }}>{title}</h3>
+        <h3 style={{ fontSize:18, fontWeight:700, color:"#5B2E1E", margin:"0 0 20px", textAlign:"center" }}>{title}</h3>
         {children}
       </div>
     </div>
@@ -61,11 +62,11 @@ function Confirm({ msg, sub, onCancel, onConfirm }: { msg: string; sub: string; 
     <div style={{ position:"fixed", inset:0, zIndex:1000, display:"flex", alignItems:"center", justifyContent:"center" }}>
       <div onClick={onCancel} style={{ position:"absolute", inset:0, background:"rgba(0,0,0,.4)" }} />
       <div style={{ position:"relative", background:"#fff", borderRadius:20, padding:"28px 24px", width:300, textAlign:"center", boxShadow:"0 8px 32px rgba(0,0,0,.2)" }}>
-        <p style={{ fontSize:17, fontWeight:700, color:"#3B1F5E", margin:"0 0 8px" }}>{msg}</p>
-        <p style={{ fontSize:13, color:"#9CA3AF", margin:"0 0 24px" }}>{sub}</p>
+        <p style={{ fontSize:17, fontWeight:700, color:"#5B2E1E", margin:"0 0 8px" }}>{msg}</p>
+        <p style={{ fontSize:13, color:"#A67760", margin:"0 0 24px" }}>{sub}</p>
         <div style={{ display:"flex", gap:12 }}>
           <button onClick={onCancel} style={{ flex:1, padding:"10px 0", borderRadius:10, border:"1px solid #E5E7EB", background:"#fff", color:"#6B7280", fontSize:14, cursor:"pointer" }}>取消</button>
-          <button onClick={onConfirm} style={{ flex:1, padding:"10px 0", borderRadius:10, border:"none", background:"linear-gradient(135deg,#C084FC,#F9A8D4)", color:"#fff", fontSize:14, fontWeight:600, cursor:"pointer" }}>确定退出</button>
+          <button onClick={onConfirm} style={{ flex:1, padding:"10px 0", borderRadius:10, border:"none", background:"linear-gradient(135deg,#FF7A45,#FFB088)", color:"#fff", fontSize:14, fontWeight:600, cursor:"pointer" }}>确定退出</button>
         </div>
       </div>
     </div>
@@ -236,33 +237,33 @@ export default function TeamPage() {
 
   /* ── No team ── */
   if (!team) return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#FDF4FF,#FFF0F6)", paddingBottom:88 }}>
+    <div>
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
-      <div style={{ maxWidth:430, margin:"0 auto", padding:"80px 24px 0", textAlign:"center" }}>
-        <div style={{ fontSize:72, marginBottom:16 }}>👥</div>
-        <h2 style={{ fontSize:22, fontWeight:700, color:"#3B1F5E", margin:"0 0 8px" }}>还没有队伍</h2>
-        <p style={{ fontSize:14, color:"#9CA3AF", margin:"0 0 40px", lineHeight:1.6 }}>邀请好友一起减肥<br />互相监督更有动力！</p>
-        <button onClick={() => setDrawer("create")} style={{ width:"100%", padding:"14px 0", borderRadius:14, border:"none", background:"linear-gradient(135deg,#C084FC,#F9A8D4)", color:"#fff", fontSize:16, fontWeight:700, cursor:"pointer", marginBottom:12 }}>✨ 创建队伍</button>
-        <button onClick={() => setDrawer("join")} style={{ width:"100%", padding:"14px 0", borderRadius:14, border:"2px solid #C084FC", background:"transparent", color:"#C084FC", fontSize:16, fontWeight:700, cursor:"pointer" }}>🔗 加入队伍</button>
-      </div>
+      <PetHero title="队伍" pet={user?.pet} petName={user?.petName} side="right" say="找几个朋友一起打卡，互相监督更容易坚持哦！" />
+      <Sheet style={{ textAlign:"center" }}>
+        <h2 style={{ fontSize:20, fontWeight:700, color:"#5B2E1E", margin:"8px 0 0" }}>还没有队伍</h2>
+        <p style={{ fontSize:14, color:"#A67760", margin:"0 0 8px", lineHeight:1.6 }}>邀请好友一起减肥<br />互相监督更有动力！</p>
+        <button onClick={() => setDrawer("create")} style={{ width:"100%", padding:"14px 0", borderRadius:999, border:"none", background:INK, color:"#fff", fontSize:16, fontWeight:700, cursor:"pointer" }}>✨ 创建队伍</button>
+        <button onClick={() => setDrawer("join")} style={{ width:"100%", padding:"14px 0", borderRadius:999, border:"2px solid #FF7A45", background:"transparent", color:"#FF7A45", fontSize:16, fontWeight:700, cursor:"pointer" }}>🔗 加入队伍</button>
+      </Sheet>
 
       {drawer === "create" && (
         <Drawer title="创建你的队伍" onClose={() => setDrawer(null)}>
-          <input value={teamName} onChange={e => setTeamName(e.target.value)} placeholder="给队伍起个名字吧" style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:15, color:"#3B1F5E", outline:"none", boxSizing:"border-box", marginBottom:16 }} />
-          <p style={{ fontSize:13, fontWeight:600, color:"#3B1F5E", margin:"0 0 10px" }}>队伍目标</p>
+          <input value={teamName} onChange={e => setTeamName(e.target.value)} placeholder="给队伍起个名字吧" style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:15, color:"#5B2E1E", outline:"none", boxSizing:"border-box", marginBottom:16 }} />
+          <p style={{ fontSize:13, fontWeight:600, color:"#5B2E1E", margin:"0 0 10px" }}>队伍目标</p>
           <div style={{ display:"flex", gap:8, marginBottom:20 }}>
             {GOALS.map(g => (
-              <button key={g.id} onClick={() => setGoal(g.id)} style={{ flex:1, padding:"10px 4px", borderRadius:12, border:"none", background: goal===g.id ? "#F3E8FF" : "#F9FAFB", outline: goal===g.id ? "2px solid #C084FC" : "2px solid transparent", fontSize:12, fontWeight: goal===g.id ? 700 : 400, color: goal===g.id ? "#7C3AED" : "#6B7280", cursor:"pointer" }}>{g.label}</button>
+              <button key={g.id} onClick={() => setGoal(g.id)} style={{ flex:1, padding:"10px 4px", borderRadius:12, border:"none", background: goal===g.id ? "#FFE7D8" : "#F9FAFB", outline: goal===g.id ? "2px solid #FF7A45" : "2px solid transparent", fontSize:12, fontWeight: goal===g.id ? 700 : 400, color: goal===g.id ? "#E8622E" : "#6B7280", cursor:"pointer" }}>{g.label}</button>
             ))}
           </div>
-          <button onClick={handleCreate} disabled={busy} style={{ width:"100%", padding:"14px 0", borderRadius:14, border:"none", background:"linear-gradient(135deg,#C084FC,#F9A8D4)", color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer" }}>{busy ? "创建中…" : "创建并邀请好友"}</button>
+          <button onClick={handleCreate} disabled={busy} style={{ width:"100%", padding:"14px 0", borderRadius:14, border:"none", background:"linear-gradient(135deg,#FF7A45,#FFB088)", color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer" }}>{busy ? "创建中…" : "创建并邀请好友"}</button>
         </Drawer>
       )}
 
       {drawer === "join" && (
         <Drawer title="加入队伍" onClose={() => setDrawer(null)}>
-          <input value={joinCode} onChange={e => setJoinCode(e.target.value)} placeholder="粘贴好友发来的邀请链接" style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:14, color:"#3B1F5E", outline:"none", boxSizing:"border-box", marginBottom:16 }} />
-          <button onClick={handleJoin} style={{ width:"100%", padding:"14px 0", borderRadius:14, border:"none", background:"linear-gradient(135deg,#C084FC,#F9A8D4)", color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer" }}>加入</button>
+          <input value={joinCode} onChange={e => setJoinCode(e.target.value)} placeholder="粘贴好友发来的邀请链接" style={{ width:"100%", padding:"12px 14px", borderRadius:12, border:"1.5px solid #E5E7EB", fontSize:14, color:"#5B2E1E", outline:"none", boxSizing:"border-box", marginBottom:16 }} />
+          <button onClick={handleJoin} style={{ width:"100%", padding:"14px 0", borderRadius:14, border:"none", background:"linear-gradient(135deg,#FF7A45,#FFB088)", color:"#fff", fontSize:15, fontWeight:700, cursor:"pointer" }}>加入</button>
         </Drawer>
       )}
     </div>
@@ -270,37 +271,43 @@ export default function TeamPage() {
 
   /* ── Has team ── */
   return (
-    <div style={{ minHeight:"100vh", background:"linear-gradient(135deg,#FDF4FF,#FFF0F6)", paddingBottom:88 }}>
+    <div>
       {toast && <Toast msg={toast} onDone={() => setToast("")} />}
       {showConfirm && <Confirm msg="确定要退出队伍吗？" sub="退出后需要重新加入" onCancel={() => setShowConfirm(false)} onConfirm={handleLeave} />}
 
-      <div style={{ maxWidth:430, margin:"0 auto", padding:"20px 16px 0" }}>
-
-        {/* 1. Team info */}
-        <div style={{ background:"linear-gradient(135deg,#F3E8FF,#FCE7F3)", borderRadius:16, padding:"16px", marginBottom:12 }}>
-          <div style={{ display:"flex", justifyContent:"space-between", alignItems:"flex-start" }}>
-            <div>
-              <h2 style={{ fontSize:20, fontWeight:800, color:"#3B1F5E", margin:"0 0 6px" }}>{team.name}</h2>
-              <span style={{ background:"rgba(192,132,252,.15)", color:"#7C3AED", borderRadius:20, padding:"3px 12px", fontSize:12, fontWeight:600 }}>{goalLabel}</span>
-              <p style={{ fontSize:12, color:"#9CA3AF", margin:"8px 0 0" }}>{members.length}/{TEAM_SIZE}人</p>
-            </div>
-            <button onClick={() => copyLink(team)} style={{ padding:"8px 14px", borderRadius:20, border:"none", background: copied ? "#D1FAE5" : "linear-gradient(135deg,#C084FC,#F9A8D4)", color: copied ? "#059669" : "#fff", fontSize:13, fontWeight:600, cursor:"pointer", whiteSpace:"nowrap" }}>
-              {copied ? "✅ 已复制" : "邀请好友 🔗"}
-            </button>
-          </div>
+      <PetHero
+        title={team.name}
+        sub={`${goalLabel} · ${members.length}/${TEAM_SIZE} 人${members.some(m => m.checked !== undefined) ? ` · 今天 ${members.filter(m => m.checked).length} 人已打卡` : ""}`}
+        right={<button onClick={() => copyLink(team)} style={{ padding:"6px 12px", borderRadius:999, border:"none", background: copied ? "#D1FAE5" : INK, color: copied ? "#059669" : "#fff", fontSize:12, fontWeight:700, cursor:"pointer", whiteSpace:"nowrap", flexShrink:0 }}>{copied ? "✅ 已复制" : "🔗 邀请"}</button>}
+      >
+        <div style={{ position:"absolute", left:0, right:0, bottom:4, display:"flex", justifyContent:"center", alignItems:"flex-end", gap:10 }}>
+          {members.slice(0, 3).map((m, i) => {
+            const size = m.me ? 104 : 84;
+            return (
+              <div key={m.key} style={{ position:"relative", display:"flex", flexDirection:"column", alignItems:"center", order: m.me ? 1 : i === 0 ? 0 : 2 }}>
+                <div style={{ borderRadius:"50%", border:`3px solid ${m.checked === false ? "#E9DED6" : "#FF7A45"}`, background:"#fff", padding:2 }}>
+                  <PetAvatar pet={m.pet} size={size} crop="head" />
+                </div>
+                <span style={{ marginTop:-10, padding:"2px 9px", borderRadius:999, fontSize:11, fontWeight:700, whiteSpace:"nowrap", background: m.checked ? ACC : "#fff", color: m.checked ? "#fff" : SUB }}>
+                  {m.name}{m.checked === undefined ? "" : m.checked ? " ✓" : " · 未打卡"}
+                </span>
+              </div>
+            );
+          })}
         </div>
-
+      </PetHero>
+      <Sheet>
         {/* 2. Members */}
-        <div style={{ background:"#fff", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 10px rgba(192,132,252,.08)" }}>
-          <p style={{ fontSize:15, fontWeight:600, color:"#3B1F5E", margin:"0 0 12px" }}>队员</p>
+        <div style={{ background:"#FFF7F1", borderRadius:20, padding:"16px", marginBottom:12 }}>
+          <p style={{ fontSize:15, fontWeight:600, color:"#5B2E1E", margin:"0 0 12px" }}>队员</p>
           {members.map(m => (
             <div key={m.key} style={{ display:"flex", alignItems:"center", padding:"10px 0", borderBottom:"1px solid #F9FAFB" }}>
               <div style={{ marginRight:12 }}><PetAvatar pet={m.pet} size={40} crop="head" /></div>
               <div style={{ flex:1 }}>
-                <p style={{ fontSize:14, fontWeight:600, color:"#3B1F5E", margin:0 }}>{m.name}{m.leader ? " 👑" : ""}{m.me ? <span style={{ fontSize:11, color:"#C084FC", fontWeight:600, marginLeft:6 }}>我</span> : null}</p>
-                <p style={{ fontSize:12, color:"#9CA3AF", margin:0 }}>{m.sub}</p>
+                <p style={{ fontSize:14, fontWeight:600, color:"#5B2E1E", margin:0 }}>{m.name}{m.leader ? " 👑" : ""}{m.me ? <span style={{ fontSize:11, color:"#FF7A45", fontWeight:600, marginLeft:6 }}>我</span> : null}</p>
+                <p style={{ fontSize:12, color:"#A67760", margin:0 }}>{m.sub}</p>
               </div>
-              {m.checked !== undefined && <span style={{ fontSize:12, fontWeight:600, color: m.checked ? "#10B981" : "#9CA3AF" }}>{m.checked ? "✅ 已打卡" : "⏰ 未打卡"}</span>}
+              {m.checked !== undefined && <span style={{ fontSize:12, fontWeight:600, color: m.checked ? "#10B981" : "#A67760" }}>{m.checked ? "✅ 已打卡" : "⏰ 未打卡"}</span>}
             </div>
           ))}
 
@@ -310,58 +317,58 @@ export default function TeamPage() {
             </div>
           )}
           {mode === "local" && (
-            <p style={{ margin:"10px 0 0", fontSize:11, color:"#C4B5D0", textAlign:"center" }}>暂时连不上组队服务，队友的打卡稍后同步</p>
+            <p style={{ margin:"10px 0 0", fontSize:11, color:"#C9B5A8", textAlign:"center" }}>暂时连不上组队服务，队友的打卡稍后同步</p>
           )}
 
           {/* Empty seats: invite */}
-          {openSlots > 0 && mode !== "gone" && <div style={{ marginTop:12, border:"1.5px dashed #E9D5FF", borderRadius:14, padding:"16px 14px", textAlign:"center", background:"#FCFAFF" }}>
+          {openSlots > 0 && mode !== "gone" && <div style={{ marginTop:12, border:"1.5px dashed #FFD2BA", borderRadius:14, padding:"16px 14px", textAlign:"center", background:"#FFFBF8" }}>
             <div style={{ display:"flex", justifyContent:"center", gap:6, marginBottom:10 }}>
               {Array.from({ length: openSlots }).map((_, i) => (
-                <span key={i} style={{ width:30, height:30, borderRadius:"50%", border:"1.5px dashed #D8B4FE", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"#D8B4FE", fontSize:16 }}>+</span>
+                <span key={i} style={{ width:30, height:30, borderRadius:"50%", border:"1.5px dashed #FFC4A3", display:"inline-flex", alignItems:"center", justifyContent:"center", color:"#FFC4A3", fontSize:16 }}>+</span>
               ))}
             </div>
-            <p style={{ fontSize:14, fontWeight:600, color:"#3B1F5E", margin:"0 0 4px" }}>{members.length <= 1 ? "还没有队友" : `还能再邀请 ${openSlots} 位好友`}</p>
-            <p style={{ fontSize:12, color:"#9CA3AF", margin:"0 0 12px", lineHeight:1.5 }}>把链接发给朋友，一起打卡、互相监督</p>
-            <button onClick={() => copyLink(team)} style={{ padding:"9px 20px", borderRadius:20, border:"none", background:"linear-gradient(135deg,#C084FC,#F9A8D4)", color:"#fff", fontSize:13, fontWeight:600, cursor:"pointer" }}>
+            <p style={{ fontSize:14, fontWeight:600, color:"#5B2E1E", margin:"0 0 4px" }}>{members.length <= 1 ? "还没有队友" : `还能再邀请 ${openSlots} 位好友`}</p>
+            <p style={{ fontSize:12, color:"#A67760", margin:"0 0 12px", lineHeight:1.5 }}>把链接发给朋友，一起打卡、互相监督</p>
+            <button onClick={() => copyLink(team)} style={{ padding:"9px 20px", borderRadius:20, border:"none", background:"linear-gradient(135deg,#FF7A45,#FFB088)", color:"#fff", fontSize:13, fontWeight:600, cursor:"pointer" }}>
               {copied ? "✅ 链接已复制" : "复制邀请链接 🔗"}
             </button>
           </div>}
         </div>
 
         {/* 3. Leaderboard: check-in days this week, real members only */}
-        <div style={{ background:"#fff", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 10px rgba(192,132,252,.08)" }}>
-          <p style={{ fontSize:15, fontWeight:600, color:"#3B1F5E", margin:"0 0 12px" }}>本周打卡排行 🏆</p>
+        <div style={{ background:"#FFF7F1", borderRadius:20, padding:"16px", marginBottom:12 }}>
+          <p style={{ fontSize:15, fontWeight:600, color:"#5B2E1E", margin:"0 0 12px" }}>本周打卡排行 🏆</p>
           {ranking.map((r, i) => (
-            <div key={r.key} style={{ display:"flex", alignItems:"center", padding:"10px 12px", borderRadius:10, background: i === 0 && r.week > 0 ? "#FFFBEB" : r.me ? "#FCFAFF" : "#fff", marginBottom:6 }}>
-              <span style={{ fontSize: i < 3 ? 22 : 14, width:28, marginRight:6, textAlign:"center", color:"#9CA3AF", fontWeight:700 }}>{["🥇", "🥈", "🥉"][i] ?? i + 1}</span>
+            <div key={r.key} style={{ display:"flex", alignItems:"center", padding:"10px 12px", borderRadius:10, background: i === 0 && r.week > 0 ? "#FFFBEB" : r.me ? "#FFFBF8" : "#fff", marginBottom:6 }}>
+              <span style={{ fontSize: i < 3 ? 22 : 14, width:28, marginRight:6, textAlign:"center", color:"#A67760", fontWeight:700 }}>{["🥇", "🥈", "🥉"][i] ?? i + 1}</span>
               <span style={{ marginRight:8, display:"inline-flex" }}><PetAvatar pet={r.pet} size={32} crop="head" /></span>
               <div style={{ flex:1 }}>
-                <p style={{ fontSize:13, fontWeight:600, color:"#3B1F5E", margin:0 }}>{r.name}{r.me ? <span style={{ fontSize:11, color:"#C084FC", marginLeft:6 }}>我</span> : null}</p>
-                <p style={{ fontSize:11, color:"#9CA3AF", margin:0 }}>{r.sub}</p>
+                <p style={{ fontSize:13, fontWeight:600, color:"#5B2E1E", margin:0 }}>{r.name}{r.me ? <span style={{ fontSize:11, color:"#FF7A45", marginLeft:6 }}>我</span> : null}</p>
+                <p style={{ fontSize:11, color:"#A67760", margin:0 }}>{r.sub}</p>
               </div>
-              <span style={{ fontSize:13, fontWeight:700, color:"#C084FC" }}>{r.week}天</span>
+              <span style={{ fontSize:13, fontWeight:700, color:"#FF7A45" }}>{r.week}天</span>
             </div>
           ))}
           {ranking.length <= 1 && (
-            <p style={{ fontSize:12, color:"#9CA3AF", margin:"8px 0 0", textAlign:"center" }}>队友加入后，会在这里一起比拼本周打卡天数</p>
+            <p style={{ fontSize:12, color:"#A67760", margin:"8px 0 0", textAlign:"center" }}>队友加入后，会在这里一起比拼本周打卡天数</p>
           )}
         </div>
 
         {/* 4. Feed */}
-        <div style={{ background:"#fff", borderRadius:16, padding:"16px", marginBottom:12, boxShadow:"0 2px 10px rgba(192,132,252,.08)" }}>
-          <p style={{ fontSize:15, fontWeight:600, color:"#3B1F5E", margin:"0 0 12px" }}>最新动态</p>
+        <div style={{ background:"#FFF7F1", borderRadius:20, padding:"16px", marginBottom:12 }}>
+          <p style={{ fontSize:15, fontWeight:600, color:"#5B2E1E", margin:"0 0 12px" }}>最新动态</p>
           {feed.length === 0 && (
-            <p style={{ fontSize:13, color:"#9CA3AF", textAlign:"center", margin:"8px 0", lineHeight:1.6 }}>还没有动态<br />记录一餐或完成运动打卡，队友就能看到</p>
+            <p style={{ fontSize:13, color:"#A67760", textAlign:"center", margin:"8px 0", lineHeight:1.6 }}>还没有动态<br />记录一餐或完成运动打卡，队友就能看到</p>
           )}
           {feed.map(f => (
             <div key={f.id} style={{ background:"#FAFAFA", borderRadius:12, padding:"12px", marginBottom:10 }}>
               <div style={{ display:"flex", gap:10 }}>
                 <PetAvatar pet={f.pet} size={46} crop="head" />
                 <div style={{ flex:1, minWidth:0 }}>
-                  <p style={{ fontSize:13, fontWeight:700, color:"#3B1F5E", margin:"0 0 3px" }}>{f.desc}</p>
-                  <p style={{ fontSize:12, color:"#9CA3AF", margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.detail}</p>
+                  <p style={{ fontSize:13, fontWeight:700, color:"#5B2E1E", margin:"0 0 3px" }}>{f.desc}</p>
+                  <p style={{ fontSize:12, color:"#A67760", margin:0, overflow:"hidden", textOverflow:"ellipsis", whiteSpace:"nowrap" }}>{f.detail}</p>
                 </div>
-                <span style={{ fontSize:11, color:"#9CA3AF", whiteSpace:"nowrap" }}>{f.time}</span>
+                <span style={{ fontSize:11, color:"#A67760", whiteSpace:"nowrap" }}>{f.time}</span>
               </div>
             </div>
           ))}
@@ -369,9 +376,9 @@ export default function TeamPage() {
 
         {/* Leave */}
         <div style={{ textAlign:"center", padding:"8px 0 16px" }}>
-          <button onClick={() => setShowConfirm(true)} style={{ background:"transparent", border:"none", color:"#9CA3AF", fontSize:13, cursor:"pointer" }}>退出队伍</button>
+          <button onClick={() => setShowConfirm(true)} style={{ background:"transparent", border:"none", color:"#A67760", fontSize:13, cursor:"pointer" }}>退出队伍</button>
         </div>
-      </div>
+      </Sheet>
     </div>
   );
 }
