@@ -198,6 +198,8 @@ export default function ProfilePage() {
   const DIET_OPTIONS = [
     {id:"none",label:"🥩 无特殊限制"},{id:"veg",label:"🥬 素食"},
     {id:"nospicy",label:"🚫 不吃辣"},{id:"lowcarb",label:"🌾 低碳水"},{id:"hiprotein",label:"💪 高蛋白"},
+    {id:"light",label:"🍵 清淡"},{id:"heavy",label:"🌶️ 重口味"},{id:"fasting",label:"⏱️ 轻断食"},
+    {id:"noseafood",label:"🦐 不吃海鲜"},{id:"nomeat",label:"🐑 不吃牛羊肉"},{id:"nodairy",label:"🥛 不吃乳制品"},{id:"nocilantro",label:"🌿 不吃香菜"},
   ];
   function dietModal(): ModalContent {
     let tmp = [...dietPrefs];

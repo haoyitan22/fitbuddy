@@ -51,7 +51,7 @@ function JoinContent() {
     // Signing up next: keep this invite when the new account clears old data.
     if (!isLoggedIn()) { try { sessionStorage.setItem(PENDING_INVITE_KEY, "1"); } catch { /* ignore */ } }
     setJoined(true);
-    setTimeout(() => router.push(isLoggedIn() ? "/team" : "/register/step1"), 1200);
+    setTimeout(() => router.push(isLoggedIn() ? "/team" : "/register"), 1200);
   }
 
   if (!invite) return (

@@ -60,7 +60,7 @@ export default function WelcomePage() {
             拍照算热量、打卡养宠物、和好友组队，减脂这件事，我们一起陪你。
           </p>
           <Link
-            href="/register/step1"
+            href="/register"
             style={{ marginTop: 6, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, height: 58, borderRadius: 999, background: "linear-gradient(90deg, #FFA071, #FF7A45)", color: "#FFFFFF", fontSize: 17, fontWeight: 700, textDecoration: "none", boxShadow: "0 8px 18px rgba(255, 122, 69, 0.3)" }}
           >
             开始我的旅程

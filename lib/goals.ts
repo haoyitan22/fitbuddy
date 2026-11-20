@@ -111,6 +111,8 @@ export function getDailyTargets(): DailyTargets {
 
 const DIET_LABELS: Record<string, string> = {
   veg: "素食", nospicy: "不吃辣", lowcarb: "低碳水", hiprotein: "高蛋白",
+  light: "口味清淡", heavy: "口味偏重", fasting: "轻断食",
+  noseafood: "不吃海鲜", nomeat: "不吃牛羊肉", nodairy: "不吃乳制品", nocilantro: "不吃香菜",
 };
 
 /** Diet preferences picked on the profile page, as readable labels. */
